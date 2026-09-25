@@ -1,6 +1,6 @@
 const API_BASE_URL = "https://sentinelai-backend-pwur.onrender.com";
 
-const CURRENT_USER_ID = 4;
+const CURRENT_USER_ID = 1;
 
 async function apiRequest(
     endpoint,
