@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
 from models.repository import Repository
-from models.user import User
+from utils.session import get_current_user
 
 
 router = APIRouter(
@@ -14,7 +14,6 @@ router = APIRouter(
 
 
 class RepositoryCreate(BaseModel):
-    user_id: int
     github_repo_id: str
     name: str
     full_name: str
@@ -24,18 +23,32 @@ class RepositoryCreate(BaseModel):
 @router.post("/")
 def create_repository(
     repo_data: RepositoryCreate,
+    request: Request,
     db: Session = Depends(get_db),
 ):
-    user = db.get(User, repo_data.user_id)
+    user = get_current_user(request, db)
 
-    if user is None:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found.",
+    existing = (
+        db.query(Repository)
+        .filter(
+            Repository.user_id == user.id,
+            Repository.github_repo_id == repo_data.github_repo_id,
         )
+        .first()
+    )
+
+    if existing is not None:
+        return {
+            "id": existing.id,
+            "user_id": existing.user_id,
+            "github_repo_id": existing.github_repo_id,
+            "name": existing.name,
+            "full_name": existing.full_name,
+            "clone_url": existing.clone_url,
+        }
 
     repository = Repository(
-        user_id=repo_data.user_id,
+        user_id=user.id,
         github_repo_id=repo_data.github_repo_id,
         name=repo_data.name,
         full_name=repo_data.full_name,
@@ -55,14 +68,17 @@ def create_repository(
         "clone_url": repository.clone_url,
     }
 
+
 @router.get("/")
 def get_repositories(
-    user_id: int,
+    request: Request,
     db: Session = Depends(get_db),
 ):
+    user = get_current_user(request, db)
+
     repositories = (
         db.query(Repository)
-        .filter(Repository.user_id == user_id)
+        .filter(Repository.user_id == user.id)
         .all()
     )
 

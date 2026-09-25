@@ -1,6 +1,5 @@
 const API_BASE_URL = "https://sentinelai-backend-pwur.onrender.com";
 
-const CURRENT_USER_ID = 1;
 
 async function apiRequest(
     endpoint,
@@ -9,11 +8,12 @@ async function apiRequest(
     const response = await fetch(
         `${API_BASE_URL}${endpoint}`,
         {
+            credentials: "include",
             headers: {
                 "Content-Type": "application/json",
                 ...(options.headers || {})
             },
-            ...options
+            ...options,
         }
     );
 
@@ -38,10 +38,31 @@ async function apiRequest(
 
 
 /* =========================
+   AUTHENTICATION
+========================= */
+
+async function getCurrentUser() {
+    return apiRequest(
+        "/api/v1/auth/me"
+    );
+}
+
+
+async function logout() {
+    return apiRequest(
+        "/api/v1/auth/logout",
+        {
+            method: "POST"
+        }
+    );
+}
+
+
+/* =========================
    GITHUB
 ========================= */
 
-async function connectGitHub() {
+function connectGitHub() {
     window.location.href =
         `${API_BASE_URL}/api/v1/github/login`;
 }
@@ -49,14 +70,14 @@ async function connectGitHub() {
 
 async function getGitHubRepositories() {
     return apiRequest(
-        `/api/v1/github/repositories?user_id=${CURRENT_USER_ID}`
+        "/api/v1/github/repositories"
     );
 }
 
 
 async function syncGitHubRepositories() {
     return apiRequest(
-        `/api/v1/github/repositories/sync?user_id=${CURRENT_USER_ID}`,
+        "/api/v1/github/repositories/sync",
         {
             method: "POST"
         }
@@ -70,7 +91,7 @@ async function syncGitHubRepositories() {
 
 async function getRepositories() {
     return apiRequest(
-        `/api/v1/repositories/?user_id=${CURRENT_USER_ID}`
+        "/api/v1/repositories/"
     );
 }
 
@@ -171,13 +192,19 @@ async function getPullRequestStatus(
     );
 }
 
+
+window.apiRequest = apiRequest;
+window.getCurrentUser = getCurrentUser;
+window.logout = logout;
+window.connectGitHub = connectGitHub;
+window.getGitHubRepositories = getGitHubRepositories;
+window.syncGitHubRepositories = syncGitHubRepositories;
 window.getRepositories = getRepositories;
 window.createScan = createScan;
-window.apiRequest = apiRequest;
 window.getScanVulnerabilities = getScanVulnerabilities;
+window.getVulnerabilitySource = getVulnerabilitySource;
 window.createFix = createFix;
 window.approveFix = approveFix;
 window.rejectFix = rejectFix;
 window.applyFix = applyFix;
 window.getPullRequestStatus = getPullRequestStatus;
-window.connectGitHub = connectGitHub;

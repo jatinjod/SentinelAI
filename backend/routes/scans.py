@@ -1,9 +1,8 @@
-from multiprocessing.dummy import connection
 import shutil
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -15,6 +14,7 @@ from models.vulnerability import Vulnerability
 from services.github_service import download_repository
 from services.scanner import scan_directory
 from utils.github_auth import get_valid_github_token
+from utils.session import get_current_user
 
 
 router = APIRouter(
@@ -30,11 +30,14 @@ class ScanCreate(BaseModel):
 @router.post("/")
 def create_scan(
     scan_data: ScanCreate,
+    request: Request,
     db: Session = Depends(get_db),
 ):
+    user = get_current_user(request, db)
+
     repository = db.get(Repository, scan_data.repository_id)
 
-    if repository is None:
+    if repository is None or repository.user_id != user.id:
         raise HTTPException(
             status_code=404,
             detail="Repository not found.",
@@ -42,9 +45,7 @@ def create_scan(
 
     connection = (
         db.query(GitHubConnection)
-        .filter(
-            GitHubConnection.user_id == repository.user_id
-        )
+        .filter(GitHubConnection.user_id == user.id)
         .first()
     )
 
@@ -87,7 +88,6 @@ def create_scan(
                 title="Possible hardcoded secret",
                 description=finding["message"],
             )
-
             db.add(vulnerability)
 
         scan.status = "completed"
@@ -107,7 +107,6 @@ def create_scan(
 
     except Exception as error:
         db.rollback()
-
         raise HTTPException(
             status_code=502,
             detail=f"Repository scan failed: {error}",
@@ -124,11 +123,22 @@ def create_scan(
 @router.get("/{scan_id}/vulnerabilities")
 def get_scan_vulnerabilities(
     scan_id: int,
+    request: Request,
     db: Session = Depends(get_db),
 ):
+    user = get_current_user(request, db)
+
     scan = db.get(Scan, scan_id)
 
     if scan is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Scan not found.",
+        )
+
+    repository = db.get(Repository, scan.repository_id)
+
+    if repository is None or repository.user_id != user.id:
         raise HTTPException(
             status_code=404,
             detail="Scan not found.",

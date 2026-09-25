@@ -16,6 +16,21 @@ APP_NAME = os.getenv("APP_NAME", "SentinelAI")
 APP_ENV = os.getenv("APP_ENV", "development")
 APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
 
+FRONTEND_URL = os.getenv(
+    "FRONTEND_URL",
+    (
+        "https://sentinelai-frontend-t31x.onrender.com"
+        if APP_ENV == "production"
+        else "http://127.0.0.1:3000"
+    ),
+)
+
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+SESSION_COOKIE_NAME = os.getenv(
+    "SESSION_COOKIE_NAME",
+    "sentinel_session",
+)
+
 
 # Database settings
 DB_USER = os.getenv("DB_USER", "postgres")

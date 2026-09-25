@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database.connection import Base
@@ -8,6 +8,14 @@ from database.connection import Base
 
 class Repository(Base):
     __tablename__ = "repositories"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "github_repo_id",
+            name="uq_repositories_user_github_repo",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
@@ -18,7 +26,6 @@ class Repository(Base):
 
     github_repo_id: Mapped[str] = mapped_column(
         String(100),
-        unique=True,
         nullable=False,
     )
 

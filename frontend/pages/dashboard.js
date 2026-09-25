@@ -320,7 +320,7 @@ async function syncRepositories() {
 
         const result =
             await apiRequest(
-                "/api/v1/github/repositories/sync?user_id=4",
+                "/api/v1/github/repositories/sync",
                 {
                     method: "POST"
                 }

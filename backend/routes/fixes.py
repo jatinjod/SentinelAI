@@ -1,20 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException
+import secrets
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
-
 from models.fix import Fix
 from models.github_connection import GitHubConnection
+from models.pull_request import PullRequest
 from models.repository import Repository
 from models.scan import Scan
 from models.vulnerability import Vulnerability
-
 from services.ai_service import generate_fix
-import secrets
-
-from models.pull_request import PullRequest
-
 from services.github_service import (
     create_branch,
     create_pull_request,
@@ -22,8 +19,9 @@ from services.github_service import (
     get_repository_info,
     update_repository_file,
 )
-
 from utils.github_auth import get_valid_github_token
+from utils.session import get_current_user
+
 
 router = APIRouter(
     prefix="/api/v1/fixes",
@@ -35,15 +33,12 @@ class FixCreate(BaseModel):
     vulnerability_id: int
 
 
-@router.post("/")
-def create_fix(
-    fix_data: FixCreate,
-    db: Session = Depends(get_db),
+def _get_owned_vulnerability_context(
+    vulnerability_id: int,
+    user_id: int,
+    db: Session,
 ):
-    vulnerability = db.get(
-        Vulnerability,
-        fix_data.vulnerability_id,
-    )
+    vulnerability = db.get(Vulnerability, vulnerability_id)
 
     if vulnerability is None:
         raise HTTPException(
@@ -51,10 +46,7 @@ def create_fix(
             detail="Vulnerability not found.",
         )
 
-    scan = db.get(
-        Scan,
-        vulnerability.scan_id,
-    )
+    scan = db.get(Scan, vulnerability.scan_id)
 
     if scan is None:
         raise HTTPException(
@@ -62,22 +54,56 @@ def create_fix(
             detail="Scan not found.",
         )
 
-    repository = db.get(
-        Repository,
-        scan.repository_id,
-    )
+    repository = db.get(Repository, scan.repository_id)
 
-    if repository is None:
+    if repository is None or repository.user_id != user_id:
         raise HTTPException(
             status_code=404,
-            detail="Repository not found.",
+            detail="Vulnerability not found.",
         )
+
+    return vulnerability, scan, repository
+
+
+def _get_owned_fix(
+    fix_id: int,
+    user_id: int,
+    db: Session,
+):
+    fix = db.get(Fix, fix_id)
+
+    if fix is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Fix not found.",
+        )
+
+    _vulnerability, _scan, _repository = _get_owned_vulnerability_context(
+        fix.vulnerability_id,
+        user_id,
+        db,
+    )
+
+    return fix
+
+
+@router.post("/")
+def create_fix(
+    fix_data: FixCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user = get_current_user(request, db)
+
+    vulnerability, _scan, repository = _get_owned_vulnerability_context(
+        fix_data.vulnerability_id,
+        user.id,
+        db,
+    )
 
     connection = (
         db.query(GitHubConnection)
-        .filter(
-            GitHubConnection.user_id == repository.user_id
-        )
+        .filter(GitHubConnection.user_id == user.id)
         .first()
     )
 
@@ -98,7 +124,6 @@ def create_fix(
             full_name=repository.full_name,
             file_path=vulnerability.file_path,
         )
-
     except Exception as error:
         raise HTTPException(
             status_code=502,
@@ -106,7 +131,6 @@ def create_fix(
         )
 
     lines = file_data["content"].splitlines()
-
     target_line = vulnerability.line_number
 
     if target_line is None or target_line < 1:
@@ -162,15 +186,11 @@ def create_fix(
 @router.patch("/{fix_id}/approve")
 def approve_fix(
     fix_id: int,
+    request: Request,
     db: Session = Depends(get_db),
 ):
-    fix = db.get(Fix, fix_id)
-
-    if fix is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Fix not found.",
-        )
+    user = get_current_user(request, db)
+    fix = _get_owned_fix(fix_id, user.id, db)
 
     if fix.status != "pending":
         raise HTTPException(
@@ -179,7 +199,6 @@ def approve_fix(
         )
 
     fix.status = "approved"
-
     db.commit()
     db.refresh(fix)
 
@@ -194,15 +213,11 @@ def approve_fix(
 @router.patch("/{fix_id}/reject")
 def reject_fix(
     fix_id: int,
+    request: Request,
     db: Session = Depends(get_db),
 ):
-    fix = db.get(Fix, fix_id)
-
-    if fix is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Fix not found.",
-        )
+    user = get_current_user(request, db)
+    fix = _get_owned_fix(fix_id, user.id, db)
 
     if fix.status != "pending":
         raise HTTPException(
@@ -211,7 +226,6 @@ def reject_fix(
         )
 
     fix.status = "rejected"
-
     db.commit()
     db.refresh(fix)
 
@@ -226,46 +240,20 @@ def reject_fix(
 @router.get("/vulnerabilities/{vulnerability_id}/source")
 def get_vulnerability_source(
     vulnerability_id: int,
+    request: Request,
     db: Session = Depends(get_db),
 ):
-    vulnerability = db.get(
-        Vulnerability,
+    user = get_current_user(request, db)
+
+    vulnerability, _scan, repository = _get_owned_vulnerability_context(
         vulnerability_id,
+        user.id,
+        db,
     )
-
-    if vulnerability is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Vulnerability not found.",
-        )
-
-    scan = db.get(
-        Scan,
-        vulnerability.scan_id,
-    )
-
-    if scan is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Scan not found.",
-        )
-
-    repository = db.get(
-        Repository,
-        scan.repository_id,
-    )
-
-    if repository is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Repository not found.",
-        )
 
     connection = (
         db.query(GitHubConnection)
-        .filter(
-            GitHubConnection.user_id == repository.user_id
-        )
+        .filter(GitHubConnection.user_id == user.id)
         .first()
     )
 
@@ -278,15 +266,14 @@ def get_vulnerability_source(
     try:
         access_token = get_valid_github_token(
             connection=connection,
-        db=db,
-)
+            db=db,
+        )
 
         file_data = get_repository_file(
             access_token=access_token,
             full_name=repository.full_name,
             file_path=vulnerability.file_path,
         )
-
     except Exception as error:
         raise HTTPException(
             status_code=502,
@@ -294,7 +281,6 @@ def get_vulnerability_source(
         )
 
     lines = file_data["content"].splitlines()
-
     target_line = vulnerability.line_number or 1
 
     start = max(1, target_line - 3)
@@ -319,40 +305,37 @@ def get_vulnerability_source(
         "source": source_lines,
     }
 
+
 @router.post("/{fix_id}/apply")
 def apply_fix(
     fix_id: int,
+    request: Request,
     db: Session = Depends(get_db),
 ):
-    fix = db.get(Fix, fix_id)
-
-    if fix is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Fix not found.",
-        )
+    user = get_current_user(request, db)
+    fix = _get_owned_fix(fix_id, user.id, db)
 
     existing_pull_request = (
-    db.query(PullRequest)
-    .filter(
-        PullRequest.fix_id == fix.id,
-        PullRequest.status.in_(["open", "pr_created"]),
+        db.query(PullRequest)
+        .filter(
+            PullRequest.fix_id == fix.id,
+            PullRequest.status.in_(["open", "pr_created"]),
+        )
+        .first()
     )
-    .first()
-)
 
     if existing_pull_request is not None:
         return {
-        "message": "Pull request already exists for this fix.",
-        "fix_id": fix.id,
-        "fix_status": fix.status,
-        "pull_request": {
-            "id": existing_pull_request.id,
-            "github_pr_id": existing_pull_request.github_pr_id,
-            "url": existing_pull_request.url,
-            "status": existing_pull_request.status,
-        },
-    }
+            "message": "Pull request already exists for this fix.",
+            "fix_id": fix.id,
+            "fix_status": fix.status,
+            "pull_request": {
+                "id": existing_pull_request.id,
+                "github_pr_id": existing_pull_request.github_pr_id,
+                "url": existing_pull_request.url,
+                "status": existing_pull_request.status,
+            },
+        }
 
     if fix.status != "approved":
         raise HTTPException(
@@ -360,44 +343,15 @@ def apply_fix(
             detail="Only approved fixes can be applied.",
         )
 
-    vulnerability = db.get(
-        Vulnerability,
+    vulnerability, _scan, repository = _get_owned_vulnerability_context(
         fix.vulnerability_id,
+        user.id,
+        db,
     )
-
-    if vulnerability is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Vulnerability not found.",
-        )
-
-    scan = db.get(
-        Scan,
-        vulnerability.scan_id,
-    )
-
-    if scan is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Scan not found.",
-        )
-
-    repository = db.get(
-        Repository,
-        scan.repository_id,
-    )
-
-    if repository is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Repository not found.",
-        )
 
     connection = (
         db.query(GitHubConnection)
-        .filter(
-            GitHubConnection.user_id == repository.user_id
-        )
+        .filter(GitHubConnection.user_id == user.id)
         .first()
     )
 
@@ -410,7 +364,7 @@ def apply_fix(
     try:
         access_token = get_valid_github_token(
             connection=connection,
-            db=db
+            db=db,
         )
 
         repository_info = get_repository_info(
@@ -447,9 +401,7 @@ def apply_fix(
         pr_result = create_pull_request(
             access_token=access_token,
             full_name=repository.full_name,
-            title=(
-                f"fix: {vulnerability.title}"
-            ),
+            title=f"fix: {vulnerability.title}",
             body=(
                 "SentinelAI generated this fix after "
                 "human approval.\n\n"
@@ -473,7 +425,6 @@ def apply_fix(
         )
 
         db.add(pull_request)
-
         fix.status = "pr_created"
 
         db.commit()
@@ -497,7 +448,6 @@ def apply_fix(
 
     except Exception as error:
         db.rollback()
-
         raise HTTPException(
             status_code=502,
             detail=f"Could not apply fix: {error}",

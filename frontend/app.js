@@ -54,6 +54,8 @@ let pageHistory = [];
 document.addEventListener("DOMContentLoaded", () => {
     setupNavigation();
     setupTopbar();
+    setupBackButton();
+    updateSessionUI();
     loadPage("dashboard", false);
 });
 
@@ -122,6 +124,37 @@ async function loadPage(
     `;
 
     try {
+        const session =
+            await window.getCurrentUser();
+
+        if (!session.authenticated) {
+            pageContent.innerHTML = `
+                <div class="empty-state">
+                    <h3>Connect GitHub to continue</h3>
+                    <p>
+                        Connect your GitHub account to view repositories,
+                        run security scans, generate fixes and create pull requests.
+                    </p>
+                    <br>
+                    <button
+                        id="pageConnectGithubButton"
+                        class="primary-button"
+                    >
+                        Connect GitHub
+                    </button>
+                </div>
+            `;
+
+            document
+                .getElementById("pageConnectGithubButton")
+                ?.addEventListener(
+                    "click",
+                    window.connectGitHub
+                );
+
+            return;
+        }
+
         const module =
             await import(
                 `${pageModules[page]}?v=${Date.now()}`
@@ -184,11 +217,8 @@ function setupBackButton() {
 
     backButton.id = "backButton";
     backButton.className = "secondary-button";
-
     backButton.textContent = "← Back";
-
     backButton.title = "Go to previous page";
-
     backButton.setAttribute(
         "aria-label",
         "Go to previous page"
@@ -227,9 +257,7 @@ function goBack() {
 
 function updateBackButton() {
     const backButton =
-        document.getElementById(
-            "backButton"
-        );
+        document.getElementById("backButton");
 
     if (!backButton) {
         return;
@@ -252,42 +280,65 @@ function updateBackButton() {
 
 
 /* =========================
-   NAVIGATION UI
+   SESSION UI
 ========================= */
 
-function updateActiveNavigation(page) {
-    document
-        .querySelectorAll(".nav-link")
-        .forEach((link) => {
-            link.classList.toggle(
-                "active",
-                link.dataset.page === page
-            );
-        });
-}
-
-
-function updatePageHeader(page) {
-    const config = pageConfig[page];
-
-    const pageTitle =
+async function updateSessionUI() {
+    const connectButton =
         document.getElementById(
-            "pageTitle"
+            "connectGithubButton"
         );
 
-    const pageDescription =
+    const usernameElement =
         document.getElementById(
-            "pageDescription"
+            "githubUsername"
         );
 
-    if (pageTitle) {
-        pageTitle.textContent =
-            config.title;
+    if (!connectButton) {
+        return;
     }
 
-    if (pageDescription) {
-        pageDescription.textContent =
-            config.description;
+    try {
+        const session =
+            await window.getCurrentUser();
+
+        if (
+            session.authenticated &&
+            session.user
+        ) {
+            connectButton.textContent =
+                "✓ GitHub Connected";
+            connectButton.disabled = true;
+            connectButton.style.opacity = "0.7";
+            connectButton.style.cursor = "default";
+
+            if (usernameElement) {
+                usernameElement.textContent =
+                    `@${session.user.username}`;
+            }
+
+            return;
+        }
+
+        connectButton.textContent =
+            "Connect GitHub";
+        connectButton.disabled = false;
+        connectButton.style.opacity = "1";
+        connectButton.style.cursor = "pointer";
+
+        if (usernameElement) {
+            usernameElement.textContent =
+                "Not connected";
+        }
+
+    } catch (error) {
+        console.error(error);
+
+        connectButton.textContent =
+            "Connect GitHub";
+        connectButton.disabled = false;
+        connectButton.style.opacity = "1";
+        connectButton.style.cursor = "pointer";
     }
 }
 
@@ -307,39 +358,15 @@ function setupTopbar() {
             "refreshButton"
         );
 
-    setupBackButton();
-
     if (connectButton) {
-        updateGithubButton(
-            connectButton
-        );
-
         connectButton.addEventListener(
             "click",
             () => {
-                if (
-                    connectButton.disabled
-                ) {
+                if (connectButton.disabled) {
                     return;
                 }
 
-                if (
-                    typeof window.connectGitHub ===
-                    "function"
-                ) {
-                    window.connectGitHub();
-                    return;
-                }
-
-                if (
-                    typeof API_BASE_URL !==
-                        "undefined" &&
-                    typeof CURRENT_USER_ID !==
-                        "undefined"
-                ) {
-                    window.location.href =
-                        `${API_BASE_URL}/api/v1/github/login?user_id=${CURRENT_USER_ID}`;
-                }
+                window.connectGitHub();
             }
         );
     }
@@ -348,94 +375,10 @@ function setupTopbar() {
         refreshButton.addEventListener(
             "click",
             () => {
-                loadPage(
-                    currentPage,
-                    false
-                );
-
-                updateGithubButton(
-                    connectButton
-                );
+                updateSessionUI();
+                loadPage(currentPage, false);
             }
         );
-    }
-}
-
-
-/* =========================
-   GITHUB CONNECTION STATUS
-========================= */
-
-async function updateGithubButton(
-    button
-) {
-    if (!button) {
-        return;
-    }
-
-    button.disabled = true;
-    button.textContent =
-        "Checking GitHub...";
-
-    try {
-        if (
-            typeof API_BASE_URL ===
-                "undefined" ||
-            typeof CURRENT_USER_ID ===
-                "undefined"
-        ) {
-            throw new Error(
-                "API configuration unavailable."
-            );
-        }
-
-        const response =
-            await fetch(
-                `${API_BASE_URL}/api/v1/github/repositories?user_id=${CURRENT_USER_ID}`,
-                {
-                    method: "GET",
-                    headers: {
-                        "Accept":
-                            "application/json"
-                    }
-                }
-            );
-
-        if (response.ok) {
-            button.textContent =
-                "✓ GitHub Connected";
-
-            button.disabled = true;
-            button.style.opacity =
-                "0.7";
-
-            button.style.cursor =
-                "default";
-
-            return;
-        }
-
-        button.textContent =
-            "Connect GitHub";
-
-        button.disabled = false;
-        button.style.opacity = "1";
-        button.style.cursor =
-            "pointer";
-
-    } catch (error) {
-        console.error(
-            "GitHub connection check failed:",
-            error
-        );
-
-        button.textContent =
-            "Connect GitHub";
-
-        button.disabled = false;
-        button.style.opacity = "1";
-        button.style.cursor =
-            "pointer";
     }
 }
 
@@ -463,8 +406,7 @@ function showToast(
     toast.className =
         `toast ${type}`;
 
-    toast.textContent =
-        message;
+    toast.textContent = message;
 
     container.appendChild(toast);
 
@@ -480,26 +422,11 @@ function showToast(
 
 function escapeHtml(value) {
     return String(value)
-        .replaceAll(
-            "&",
-            "&amp;"
-        )
-        .replaceAll(
-            "<",
-            "&lt;"
-        )
-        .replaceAll(
-            ">",
-            "&gt;"
-        )
-        .replaceAll(
-            '"',
-            "&quot;"
-        )
-        .replaceAll(
-            "'",
-            "&#039;"
-        );
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 }
 
 
@@ -507,17 +434,8 @@ function escapeHtml(value) {
    GLOBAL FUNCTIONS
 ========================= */
 
-window.loadPage =
-    loadPage;
-
-window.showToast =
-    showToast;
-
-window.escapeHtml =
-    escapeHtml;
-
-window.updateGithubButton =
-    updateGithubButton;
-
-window.goBack =
-    goBack;
+window.loadPage = loadPage;
+window.showToast = showToast;
+window.escapeHtml = escapeHtml;
+window.updateSessionUI = updateSessionUI;
+window.goBack = goBack;

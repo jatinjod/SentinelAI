@@ -1,14 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
-
 from models.github_connection import GitHubConnection
 from models.pull_request import PullRequest
 from models.repository import Repository
-
 from services.github_service import get_pull_request
 from utils.github_auth import get_valid_github_token
+from utils.session import get_current_user
 
 
 router = APIRouter(
@@ -20,12 +19,12 @@ router = APIRouter(
 @router.get("/{pull_request_id}")
 def get_pull_request_status(
     pull_request_id: int,
+    request: Request,
     db: Session = Depends(get_db),
 ):
-    pull_request = db.get(
-        PullRequest,
-        pull_request_id,
-    )
+    user = get_current_user(request, db)
+
+    pull_request = db.get(PullRequest, pull_request_id)
 
     if pull_request is None:
         raise HTTPException(
@@ -38,17 +37,15 @@ def get_pull_request_status(
         pull_request.repository_id,
     )
 
-    if repository is None:
+    if repository is None or repository.user_id != user.id:
         raise HTTPException(
             status_code=404,
-            detail="Repository not found.",
+            detail="Pull request not found.",
         )
 
     connection = (
         db.query(GitHubConnection)
-        .filter(
-            GitHubConnection.user_id == repository.user_id
-        )
+        .filter(GitHubConnection.user_id == user.id)
         .first()
     )
 
@@ -69,7 +66,6 @@ def get_pull_request_status(
             full_name=repository.full_name,
             pull_number=pull_request.github_pr_id,
         )
-
     except Exception as error:
         raise HTTPException(
             status_code=502,
