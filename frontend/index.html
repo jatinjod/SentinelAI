@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>SentinelAI</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div id="app">
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar">
+
+            <div class="brand">
+                <div class="brand-icon">S</div>
+
+                <div>
+                    <h2>SentinelAI</h2>
+                    <span>Security Platform</span>
+                </div>
+            </div>
+
+            <nav class="navigation">
+
+                <button
+                    class="nav-link active"
+                    data-page="dashboard"
+                >
+                    <span>⌂</span>
+                    <span>Dashboard</span>
+                </button>
+
+                <button
+                    class="nav-link"
+                    data-page="repositories"
+                >
+                    <span>◈</span>
+                    <span>Repositories</span>
+                </button>
+
+                <button
+                    class="nav-link"
+                    data-page="scans"
+                >
+                    <span>◉</span>
+                    <span>Scans</span>
+                </button>
+
+                <button
+                    class="nav-link"
+                    data-page="vulnerabilities"
+                >
+                    <span>⚠</span>
+                    <span>Vulnerabilities</span>
+                </button>
+
+                <button
+                    class="nav-link"
+                    data-page="fixes"
+                >
+                    <span>✓</span>
+                    <span>Fixes</span>
+                </button>
+
+                <button
+                    class="nav-link"
+                    data-page="pull_requests"
+                >
+                    <span>↗</span>
+                    <span>Pull Requests</span>
+                </button>
+
+            </nav>
+
+            <div class="sidebar-footer">
+
+                <button
+                    class="nav-link"
+                    data-page="settings"
+                >
+                    <span>⚙</span>
+                    <span>Settings</span>
+                </button>
+
+                <div class="github-status">
+
+                    <div class="status-indicator"></div>
+
+                    <div>
+                        <strong>GitHub Connected</strong>
+                        <small id="githubUsername">
+                            @jatinjod
+                        </small>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </aside>
+
+
+        <!-- Main Application -->
+        <main class="main-content">
+
+            <!-- Topbar -->
+            <header class="topbar">
+
+                <div class="page-heading">
+
+                    <h1 id="pageTitle">
+                        Dashboard
+                    </h1>
+
+                    <p id="pageDescription">
+                        Monitor your repositories and security.
+                    </p>
+
+                </div>
+
+                <div class="topbar-actions">
+
+                    <button
+                        id="refreshButton"
+                        class="icon-button"
+                        title="Refresh"
+                    >
+                        ↻
+                    </button>
+
+                    <button
+                        id="connectGithubButton"
+                        class="primary-button"
+                    >
+                        Connect GitHub
+                    </button>
+
+                </div>
+
+            </header>
+
+
+            <!-- Page Container -->
+            <section
+                id="pageContent"
+                class="page-content"
+            >
+
+                <div class="loading-state">
+                    Loading SentinelAI...
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+
+    <!-- Toast Container -->
+    <div
+        id="toastContainer"
+        class="toast-container"
+    ></div>
+
+
+    <!-- Main JavaScript -->
+    <script
+        src="api.js"
+        defer
+    ></script>
+
+    <script
+        src="app.js"
+        defer
+    ></script>
+
+</body>
+</html>
