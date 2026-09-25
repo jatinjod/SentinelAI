@@ -47,6 +47,11 @@ const pageModules = {
 };
 
 
+const API_BASE_URL =
+    "https://sentinelai-backend-pwur.onrender.com";
+
+const CURRENT_USER_ID = 1;
+
 let currentPage = "dashboard";
 
 
@@ -97,9 +102,15 @@ async function loadPage(page) {
     const pageContent =
         document.getElementById("pageContent");
 
+    if (!pageContent) {
+        return;
+    }
+
     pageContent.innerHTML = `
         <div class="loading-state">
-            Loading ${pageConfig[page].title}...
+            Loading ${escapeHtml(
+                pageConfig[page].title
+            )}...
         </div>
     `;
 
@@ -158,13 +169,22 @@ function updateActiveNavigation(page) {
 function updatePageHeader(page) {
     const config = pageConfig[page];
 
-    document.getElementById(
-        "pageTitle"
-    ).textContent = config.title;
+    const pageTitle =
+        document.getElementById("pageTitle");
 
-    document.getElementById(
-        "pageDescription"
-    ).textContent = config.description;
+    const pageDescription =
+        document.getElementById(
+            "pageDescription"
+        );
+
+    if (pageTitle) {
+        pageTitle.textContent = config.title;
+    }
+
+    if (pageDescription) {
+        pageDescription.textContent =
+            config.description;
+    }
 }
 
 
@@ -184,18 +204,25 @@ function setupTopbar() {
         );
 
     if (connectButton) {
+        updateGithubButton(connectButton);
+
         connectButton.addEventListener(
             "click",
             () => {
+                if (connectButton.disabled) {
+                    return;
+                }
+
                 if (
                     typeof window.connectGitHub ===
                     "function"
                 ) {
                     window.connectGitHub();
-                } else {
-                    window.location.href =
-                        "http://127.0.0.1:8000/api/v1/github/login";
+                    return;
                 }
+
+                window.location.href =
+                    `${API_BASE_URL}/api/v1/github/login?user_id=${CURRENT_USER_ID}`;
             }
         );
     }
@@ -205,8 +232,67 @@ function setupTopbar() {
             "click",
             () => {
                 loadPage(currentPage);
+                updateGithubButton(connectButton);
             }
         );
+    }
+}
+
+
+/* =========================
+   GITHUB CONNECTION STATUS
+========================= */
+
+async function updateGithubButton(button) {
+    if (!button) {
+        return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Checking GitHub...";
+
+    try {
+        const response =
+            await fetch(
+                `${API_BASE_URL}/api/v1/github/repositories?user_id=${CURRENT_USER_ID}`,
+                {
+                    method: "GET",
+                    headers: {
+                        "Accept": "application/json"
+                    }
+                }
+            );
+
+        if (response.ok) {
+            button.textContent =
+                "✓ GitHub Connected";
+
+            button.disabled = true;
+            button.style.opacity = "0.7";
+            button.style.cursor = "default";
+
+            return;
+        }
+
+        button.textContent =
+            "Connect GitHub";
+
+        button.disabled = false;
+        button.style.opacity = "1";
+        button.style.cursor = "pointer";
+
+    } catch (error) {
+        console.error(
+            "GitHub connection check failed:",
+            error
+        );
+
+        button.textContent =
+            "Connect GitHub";
+
+        button.disabled = false;
+        button.style.opacity = "1";
+        button.style.cursor = "pointer";
     }
 }
 
@@ -264,3 +350,4 @@ function escapeHtml(value) {
 window.loadPage = loadPage;
 window.showToast = showToast;
 window.escapeHtml = escapeHtml;
+window.updateGithubButton = updateGithubButton;
