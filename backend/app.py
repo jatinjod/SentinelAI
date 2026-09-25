@@ -42,3 +42,9 @@ def home():
         "message": "SentinelAI Backend is running!",
         "version": APP_VERSION
     }
+
+allow_origins=[
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+    "https://sentinelai-frontend-t31x.onrender.com",
+],
