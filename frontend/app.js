@@ -47,14 +47,14 @@ const pageModules = {
 };
 
 
-
 let currentPage = "dashboard";
+let pageHistory = [];
 
 
 document.addEventListener("DOMContentLoaded", () => {
     setupNavigation();
     setupTopbar();
-    loadPage("dashboard");
+    loadPage("dashboard", false);
 });
 
 
@@ -74,13 +74,16 @@ function setupNavigation() {
                 return;
             }
 
-            loadPage(page);
+            loadPage(page, true);
         });
     });
 }
 
 
-async function loadPage(page) {
+async function loadPage(
+    page,
+    addToHistory = true
+) {
     if (!pageModules[page]) {
         showToast(
             "Requested page was not found.",
@@ -90,10 +93,18 @@ async function loadPage(page) {
         return;
     }
 
+    if (
+        addToHistory &&
+        currentPage !== page
+    ) {
+        pageHistory.push(currentPage);
+    }
+
     currentPage = page;
 
     updateActiveNavigation(page);
     updatePageHeader(page);
+    updateBackButton();
 
     const pageContent =
         document.getElementById("pageContent");
@@ -143,6 +154,100 @@ async function loadPage(page) {
             "error"
         );
     }
+
+    updateBackButton();
+}
+
+
+/* =========================
+   BACK NAVIGATION
+========================= */
+
+function setupBackButton() {
+    const pageHeading =
+        document.querySelector(".page-heading");
+
+    if (!pageHeading) {
+        return;
+    }
+
+    let backButton =
+        document.getElementById("backButton");
+
+    if (backButton) {
+        updateBackButton();
+        return;
+    }
+
+    backButton =
+        document.createElement("button");
+
+    backButton.id = "backButton";
+    backButton.className = "secondary-button";
+
+    backButton.textContent = "← Back";
+
+    backButton.title = "Go to previous page";
+
+    backButton.setAttribute(
+        "aria-label",
+        "Go to previous page"
+    );
+
+    backButton.style.marginBottom = "10px";
+    backButton.style.padding = "8px 12px";
+    backButton.style.fontSize = "12px";
+    backButton.style.width = "fit-content";
+
+    pageHeading.prepend(backButton);
+
+    backButton.addEventListener(
+        "click",
+        goBack
+    );
+
+    updateBackButton();
+}
+
+
+function goBack() {
+    if (pageHistory.length === 0) {
+        return;
+    }
+
+    const previousPage =
+        pageHistory.pop();
+
+    loadPage(
+        previousPage,
+        false
+    );
+}
+
+
+function updateBackButton() {
+    const backButton =
+        document.getElementById(
+            "backButton"
+        );
+
+    if (!backButton) {
+        return;
+    }
+
+    const canGoBack =
+        pageHistory.length > 0;
+
+    backButton.disabled =
+        !canGoBack;
+
+    backButton.style.opacity =
+        canGoBack ? "1" : "0.45";
+
+    backButton.style.cursor =
+        canGoBack
+            ? "pointer"
+            : "default";
 }
 
 
@@ -166,7 +271,9 @@ function updatePageHeader(page) {
     const config = pageConfig[page];
 
     const pageTitle =
-        document.getElementById("pageTitle");
+        document.getElementById(
+            "pageTitle"
+        );
 
     const pageDescription =
         document.getElementById(
@@ -174,7 +281,8 @@ function updatePageHeader(page) {
         );
 
     if (pageTitle) {
-        pageTitle.textContent = config.title;
+        pageTitle.textContent =
+            config.title;
     }
 
     if (pageDescription) {
@@ -199,13 +307,19 @@ function setupTopbar() {
             "refreshButton"
         );
 
+    setupBackButton();
+
     if (connectButton) {
-        updateGithubButton(connectButton);
+        updateGithubButton(
+            connectButton
+        );
 
         connectButton.addEventListener(
             "click",
             () => {
-                if (connectButton.disabled) {
+                if (
+                    connectButton.disabled
+                ) {
                     return;
                 }
 
@@ -217,8 +331,15 @@ function setupTopbar() {
                     return;
                 }
 
-                window.location.href =
-                    `${API_BASE_URL}/api/v1/github/login?user_id=${CURRENT_USER_ID}`;
+                if (
+                    typeof API_BASE_URL !==
+                        "undefined" &&
+                    typeof CURRENT_USER_ID !==
+                        "undefined"
+                ) {
+                    window.location.href =
+                        `${API_BASE_URL}/api/v1/github/login?user_id=${CURRENT_USER_ID}`;
+                }
             }
         );
     }
@@ -227,8 +348,14 @@ function setupTopbar() {
         refreshButton.addEventListener(
             "click",
             () => {
-                loadPage(currentPage);
-                updateGithubButton(connectButton);
+                loadPage(
+                    currentPage,
+                    false
+                );
+
+                updateGithubButton(
+                    connectButton
+                );
             }
         );
     }
@@ -239,22 +366,37 @@ function setupTopbar() {
    GITHUB CONNECTION STATUS
 ========================= */
 
-async function updateGithubButton(button) {
+async function updateGithubButton(
+    button
+) {
     if (!button) {
         return;
     }
 
     button.disabled = true;
-    button.textContent = "Checking GitHub...";
+    button.textContent =
+        "Checking GitHub...";
 
     try {
+        if (
+            typeof API_BASE_URL ===
+                "undefined" ||
+            typeof CURRENT_USER_ID ===
+                "undefined"
+        ) {
+            throw new Error(
+                "API configuration unavailable."
+            );
+        }
+
         const response =
             await fetch(
                 `${API_BASE_URL}/api/v1/github/repositories?user_id=${CURRENT_USER_ID}`,
                 {
                     method: "GET",
                     headers: {
-                        "Accept": "application/json"
+                        "Accept":
+                            "application/json"
                     }
                 }
             );
@@ -264,8 +406,11 @@ async function updateGithubButton(button) {
                 "✓ GitHub Connected";
 
             button.disabled = true;
-            button.style.opacity = "0.7";
-            button.style.cursor = "default";
+            button.style.opacity =
+                "0.7";
+
+            button.style.cursor =
+                "default";
 
             return;
         }
@@ -275,7 +420,8 @@ async function updateGithubButton(button) {
 
         button.disabled = false;
         button.style.opacity = "1";
-        button.style.cursor = "pointer";
+        button.style.cursor =
+            "pointer";
 
     } catch (error) {
         console.error(
@@ -288,7 +434,8 @@ async function updateGithubButton(button) {
 
         button.disabled = false;
         button.style.opacity = "1";
-        button.style.cursor = "pointer";
+        button.style.cursor =
+            "pointer";
     }
 }
 
@@ -313,9 +460,11 @@ function showToast(
     const toast =
         document.createElement("div");
 
-    toast.className = `toast ${type}`;
+    toast.className =
+        `toast ${type}`;
 
-    toast.textContent = message;
+    toast.textContent =
+        message;
 
     container.appendChild(toast);
 
@@ -331,11 +480,26 @@ function showToast(
 
 function escapeHtml(value) {
     return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
+        .replaceAll(
+            '"',
+            "&quot;"
+        )
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
 }
 
 
@@ -343,7 +507,17 @@ function escapeHtml(value) {
    GLOBAL FUNCTIONS
 ========================= */
 
-window.loadPage = loadPage;
-window.showToast = showToast;
-window.escapeHtml = escapeHtml;
-window.updateGithubButton = updateGithubButton;
+window.loadPage =
+    loadPage;
+
+window.showToast =
+    showToast;
+
+window.escapeHtml =
+    escapeHtml;
+
+window.updateGithubButton =
+    updateGithubButton;
+
+window.goBack =
+    goBack;
