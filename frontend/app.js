@@ -47,10 +47,6 @@ const pageModules = {
 };
 
 
-const API_BASE_URL =
-    "https://sentinelai-backend-pwur.onrender.com";
-
-const CURRENT_USER_ID = 1;
 
 let currentPage = "dashboard";
 
