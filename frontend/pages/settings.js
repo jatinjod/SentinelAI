@@ -8,8 +8,8 @@ export async function render(container) {
         <section class="settings-page">
             <div class="settings-hero">
                 <div>
-                    <span class="settings-eyebrow">ACCOUNT CONTROL CENTER</span>
-                    <h2>Settings</h2>
+                    <span class="settings-eyebrow">SETTINGS</span>
+                    <h2>Account Control Center</h2>
                     <p>
                         Manage your profile, security, GitHub connection,
                         preferences and account data from one place.
@@ -17,7 +17,7 @@ export async function render(container) {
                 </div>
                 <div class="settings-hero-badge">
                     <span class="settings-status-dot"></span>
-                    SentinelAI account
+                    Account active
                 </div>
             </div>
 
@@ -309,7 +309,7 @@ export async function render(container) {
                                 <span class="settings-danger-label">DANGER ZONE</span>
                                 <h4>Delete account</h4>
                                 <p>
-                                    Permanently delete your SentinelAI account and stored application data.
+                                    Permanently delete your Account active and stored application data.
                                     This does not delete your actual GitHub repositories.
                                 </p>
                             </div>
@@ -456,7 +456,7 @@ function renderGithubCard(session) {
             <div class="settings-github-icon">✓</div>
             <div>
                 <strong>GitHub connected</strong>
-                <p>@${escapeHtml(githubUsername)} is connected to this SentinelAI account.</p>
+                <p>@${escapeHtml(githubUsername)} is connected to this Account active.</p>
             </div>
             <span class="settings-pill success">Connected</span>
         </div>
@@ -676,7 +676,7 @@ async function syncGithub() {
 
 async function disconnectGithub() {
     const confirmed = window.confirm(
-        "Disconnect GitHub from this SentinelAI account? Your GitHub repositories will no longer be available until you connect again."
+        "Disconnect GitHub from this Account active? Your GitHub repositories will no longer be available until you connect again."
     );
 
     if (!confirmed) return;
@@ -817,7 +817,7 @@ async function logoutUser() {
 
 async function deleteAccount() {
     const confirmation = window.prompt(
-        'This permanently deletes your SentinelAI account data. Type DELETE to continue.'
+        'This permanently deletes your Account active data. Type DELETE to continue.'
     );
 
     if (confirmation !== "DELETE") {
