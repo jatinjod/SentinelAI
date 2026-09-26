@@ -65,10 +65,35 @@ def migrate_user_auth():
             pass
 
 
+def migrate_user_profile():
+    with engine.begin() as connection:
+        try:
+            connection.execute(
+                text(
+                    "ALTER TABLE users "
+                    "ADD COLUMN IF NOT EXISTS display_name VARCHAR(100)"
+                )
+            )
+        except Exception:
+            pass
+
+        try:
+            connection.execute(
+                text(
+                    "UPDATE users "
+                    "SET display_name = username "
+                    "WHERE display_name IS NULL OR TRIM(display_name) = ''"
+                )
+            )
+        except Exception:
+            pass
+
+
 def create_tables():
     Base.metadata.create_all(bind=engine)
     migrate_repository_uniqueness()
     migrate_user_auth()
+    migrate_user_profile()
     print("Database tables created successfully!")
 
 
