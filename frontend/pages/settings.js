@@ -345,12 +345,13 @@ export async function render(container) {
                                 </p>
                             </div>
 
-                            <a
+                            <button
+                                type="button"
                                 class="primary-button settings-admin-open"
-                                href="admin.html"
+                                id="openAdminPanelButton"
                             >
                                 Open Admin Panel →
-                            </a>
+                            </button>
                         </div>
 
                         <div class="settings-info-card">
@@ -368,8 +369,10 @@ export async function render(container) {
 
     bindSettingsNavigation();
     bindPasswordToggles();
-    // Resolve admin visibility immediately from the already-authenticated app state.
-    // Do not make the settings page wait for account-data/network requests.
+    document.getElementById("openAdminPanelButton")?.addEventListener("click", () => {
+        window.location.assign("/admin.html");
+    });
+    // Paint settings immediately. Profile/account data and admin verification load in the background.
     loadAdminAccess();
     loadSettingsData().catch((error) => {
         console.warn("Settings data load failed:", error);
