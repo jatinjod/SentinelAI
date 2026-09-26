@@ -84,61 +84,69 @@ def admin_me(request: Request, db: Session = Depends(get_db)):
 def overview(request: Request, db: Session = Depends(get_db)):
     _require_admin(request, db)
 
-    total_users = db.query(func.count(User.id)).scalar() or 0
-    active_users = db.query(func.count(User.id)).filter(User.is_active.is_(True)).scalar() or 0
-    admins = db.query(func.count(User.id)).filter(User.is_admin.is_(True)).scalar() or 0
-    github_users = db.query(func.count(GitHubConnection.id)).scalar() or 0
-    total_repositories = db.query(func.count(Repository.id)).scalar() or 0
-    total_scans = db.query(func.count(Scan.id)).scalar() or 0
-    completed_scans = db.query(func.count(Scan.id)).filter(Scan.status == "completed").scalar() or 0
-    total_vulnerabilities = db.query(func.count(Vulnerability.id)).scalar() or 0
-    total_fixes = db.query(func.count(Fix.id)).scalar() or 0
-    applied_fixes = db.query(func.count(Fix.id)).filter(Fix.status == "applied").scalar() or 0
-    total_prs = db.query(func.count(PullRequest.id)).scalar() or 0
-    merged_prs = db.query(func.count(PullRequest.id)).filter(PullRequest.status == "merged").scalar() or 0
+    def count(query):
+        try:
+            return int(query.scalar() or 0)
+        except Exception:
+            db.rollback()
+            return 0
 
-    severity_rows = (
-        db.query(Vulnerability.severity, func.count(Vulnerability.id))
-        .group_by(Vulnerability.severity)
-        .all()
-    )
-    severity = {str(level).lower(): int(count) for level, count in severity_rows}
+    total_users = count(db.query(func.count(User.id)))
+    active_users = count(db.query(func.count(User.id)).filter(User.is_active.is_(True)))
+    admins = count(db.query(func.count(User.id)).filter(User.is_admin.is_(True)))
+    github_users = count(db.query(func.count(GitHubConnection.id)))
+    total_repositories = count(db.query(func.count(Repository.id)))
+    total_scans = count(db.query(func.count(Scan.id)))
+    completed_scans = count(db.query(func.count(Scan.id)).filter(Scan.status == "completed"))
+    total_vulnerabilities = count(db.query(func.count(Vulnerability.id)))
+    total_fixes = count(db.query(func.count(Fix.id)))
+    applied_fixes = count(db.query(func.count(Fix.id)).filter(Fix.status == "applied"))
+    total_prs = count(db.query(func.count(PullRequest.id)))
+    merged_prs = count(db.query(func.count(PullRequest.id)).filter(PullRequest.status == "merged"))
 
-    recent_users = (
-        db.query(User)
-        .order_by(User.created_at.desc())
-        .limit(8)
-        .all()
-    )
+    try:
+        severity_rows = (
+            db.query(Vulnerability.severity, func.count(Vulnerability.id))
+            .group_by(Vulnerability.severity)
+            .all()
+        )
+        severity = {str(level).lower(): int(count_value) for level, count_value in severity_rows}
+    except Exception:
+        db.rollback()
+        severity = {}
 
-    recent_scans = (
-        db.query(Scan, Repository, User)
-        .join(Repository, Repository.id == Scan.repository_id)
-        .join(User, User.id == Repository.user_id)
-        .order_by(Scan.created_at.desc())
-        .limit(8)
-        .all()
-    )
+    try:
+        recent_scans = (
+            db.query(Scan, Repository, User)
+            .join(Repository, Repository.id == Scan.repository_id)
+            .join(User, User.id == Repository.user_id)
+            .order_by(Scan.created_at.desc())
+            .limit(8)
+            .all()
+        )
+    except Exception:
+        db.rollback()
+        recent_scans = []
 
-    recent_fixes = (
-        db.query(Fix, Vulnerability, Scan, Repository, User)
-        .join(Vulnerability, Vulnerability.id == Fix.vulnerability_id)
-        .join(Scan, Scan.id == Vulnerability.scan_id)
-        .join(Repository, Repository.id == Scan.repository_id)
-        .join(User, User.id == Repository.user_id)
-        .order_by(Fix.created_at.desc())
-        .limit(8)
-        .all()
-    )
+    try:
+        recent_prs = (
+            db.query(PullRequest, Repository, User)
+            .join(Repository, Repository.id == PullRequest.repository_id)
+            .join(User, User.id == Repository.user_id)
+            .order_by(PullRequest.created_at.desc())
+            .limit(8)
+            .all()
+        )
+    except Exception:
+        db.rollback()
+        recent_prs = []
 
-    recent_prs = (
-        db.query(PullRequest, Repository, User)
-        .join(Repository, Repository.id == PullRequest.repository_id)
-        .join(User, User.id == Repository.user_id)
-        .order_by(PullRequest.created_at.desc())
-        .limit(8)
-        .all()
-    )
+    try:
+        recent_users = db.query(User).order_by(User.created_at.desc()).limit(8).all()
+        serialized_users = [_serialize_user(user, db) for user in recent_users]
+    except Exception:
+        db.rollback()
+        serialized_users = []
 
     return {
         "stats": {
@@ -156,7 +164,7 @@ def overview(request: Request, db: Session = Depends(get_db)):
             "merged_prs": merged_prs,
         },
         "severity": severity,
-        "recent_users": [_serialize_user(user, db) for user in recent_users],
+        "recent_users": serialized_users,
         "recent_scans": [
             {
                 "id": scan.id,
@@ -166,17 +174,6 @@ def overview(request: Request, db: Session = Depends(get_db)):
                 "created_at": scan.created_at.isoformat() if scan.created_at else None,
             }
             for scan, repository, user in recent_scans
-        ],
-        "recent_fixes": [
-            {
-                "id": fix.id,
-                "repository": repository.full_name,
-                "user": getattr(user, "display_name", None) or user.username,
-                "status": fix.status,
-                "severity": vulnerability.severity,
-                "created_at": fix.created_at.isoformat() if fix.created_at else None,
-            }
-            for fix, vulnerability, scan, repository, user in recent_fixes
         ],
         "recent_pull_requests": [
             {
@@ -190,6 +187,7 @@ def overview(request: Request, db: Session = Depends(get_db)):
             }
             for pr, repository, user in recent_prs
         ],
+        "recent_fixes": [],
     }
 
 
