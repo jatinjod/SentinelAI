@@ -166,14 +166,11 @@ async function loadSettings() {
                     "sentinelai_last_pr"
                 );
 
-                window.showToast(
-                    "Logged out successfully.",
-                    "success"
-                );
-
-                setTimeout(() => {
+                if (typeof window.logoutAndShowLogin === "function") {
+                    window.logoutAndShowLogin();
+                } else {
                     window.location.reload();
-                }, 350);
+                }
 
             } catch (error) {
                 logoutButton.disabled = false;
