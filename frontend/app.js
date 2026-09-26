@@ -259,9 +259,17 @@ async function handleEmailAuthSubmit(event) {
 }
 
 
-async function bootstrapAuth() {
-    showAuthScreen("Checking your session...");
+function finishAppBoot() {
+    document.body.classList.remove("app-booting");
+    const bootScreen = document.getElementById("appBootScreen");
+    if (bootScreen) bootScreen.hidden = true;
+}
 
+
+async function bootstrapAuth() {
+    // Keep both the auth screen and application hidden until the session
+    // check completes. This prevents the login screen from flashing on
+    // every hard refresh for already-authenticated users.
     try {
         const session = await window.getCurrentUser();
 
@@ -284,6 +292,7 @@ async function bootstrapAuth() {
 
 
 function showAuthScreen(message) {
+    finishAppBoot();
     document.body.classList.add("auth-mode");
 
     const authScreen = document.getElementById("authScreen");
@@ -315,6 +324,7 @@ function showAuthScreen(message) {
 
 
 function showApplication() {
+    finishAppBoot();
     document.body.classList.remove("auth-mode");
     const authScreen = document.getElementById("authScreen");
     const app = document.getElementById("app");

@@ -9,9 +9,15 @@
     <link rel="stylesheet" href="style.css">
 </head>
 
-<body>
+<body class="app-booting">
 
-<section id="authScreen" class="auth-screen" aria-labelledby="authTitle">
+<div id="appBootScreen" class="app-boot-screen" aria-live="polite">
+    <div class="app-boot-mark">S</div>
+    <div class="app-boot-name">SentinelAI</div>
+    <div class="app-boot-status">Securing your workspace…</div>
+</div>
+
+<section id="authScreen" hidden class="auth-screen" aria-labelledby="authTitle">
     <div class="auth-orbit auth-orbit-one"></div>
     <div class="auth-orbit auth-orbit-two"></div>
     <div class="auth-noise"></div>

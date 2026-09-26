@@ -141,3 +141,10 @@ button { cursor: pointer; }
     .user{flex-direction:column; align-items:stretch;}
     .actions{justify-content:flex-start;}
 }
+
+
+.admin-quick-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.admin-quick-actions .ghost-button { min-height:38px; }
+.admin-data-notice { padding:11px 13px; border:1px solid rgba(245,185,66,.35); border-radius:10px; background:rgba(245,185,66,.08); color:var(--warning); font-size:11px; }
+.users-loading { padding:14px 18px; color:var(--muted); font-size:11px; }
+.loading-card { min-height:70px; display:grid; place-items:center; }
