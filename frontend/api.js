@@ -18,6 +18,7 @@ const SESSION_TOKEN_KEY = "sentinelai_session_token";
     }
 
     sessionStorage.setItem(SESSION_TOKEN_KEY, token);
+    localStorage.setItem(SESSION_TOKEN_KEY, token);
 
     window.history.replaceState(
         null,
@@ -28,19 +29,21 @@ const SESSION_TOKEN_KEY = "sentinelai_session_token";
 
 
 function getSessionToken() {
-    return sessionStorage.getItem(SESSION_TOKEN_KEY);
+    return sessionStorage.getItem(SESSION_TOKEN_KEY) || localStorage.getItem(SESSION_TOKEN_KEY);
 }
 
 
 function setSessionToken(token) {
     if (token) {
         sessionStorage.setItem(SESSION_TOKEN_KEY, token);
+    localStorage.setItem(SESSION_TOKEN_KEY, token);
     }
 }
 
 
 function clearSessionToken() {
     sessionStorage.removeItem(SESSION_TOKEN_KEY);
+    localStorage.removeItem(SESSION_TOKEN_KEY);
 }
 
 
@@ -186,21 +189,9 @@ async function logout() {
    GITHUB
 ========================= */
 
-async function connectGitHub() {
-    const result = await apiRequest(
-        "/api/v1/github/login-url"
-    );
-
-    const authorizationUrl =
-        result?.authorization_url;
-
-    if (!authorizationUrl) {
-        throw new Error(
-            "Unable to start GitHub authorization."
-        );
-    }
-
-    window.location.href = authorizationUrl;
+function connectGitHub() {
+    window.location.href =
+        `${API_BASE_URL}/api/v1/github/login`;
 }
 
 

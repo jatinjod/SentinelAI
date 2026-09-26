@@ -3,7 +3,7 @@ const TOKEN_KEY = "sentinelai_session_token";
 const state = { users: [], search: "" };
 
 function token() {
-    return sessionStorage.getItem(TOKEN_KEY) || "";
+    return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || "";
 }
 
 async function api(path, options = {}) {
@@ -36,7 +36,8 @@ async function bootstrap() {
             <div class="denied">
                 <h2>Admin access required</h2>
                 <p>${escapeHtml(error.message)}</p>
-                <a href="index.html">Return to SentinelAI</a>
+                <p class="auth-help">Open SentinelAI, sign in, then return to Admin Panel.</p>
+                <a href="index.html">Sign in to SentinelAI</a>
             </div>`;
     }
 }
@@ -199,7 +200,7 @@ function debounce(fn, delay) {
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("logoutButton")?.addEventListener("click", async () => {
         try { await api("/api/v1/auth/logout", { method:"POST" }); } catch {}
-        sessionStorage.removeItem(TOKEN_KEY);
+        sessionStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY);
         window.location.href = "index.html";
     });
     bootstrap();
