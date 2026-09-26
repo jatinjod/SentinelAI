@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-import secrets
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -20,9 +19,9 @@ from models.user import User
 from utils.github_auth import get_valid_github_token
 from utils.security import encrypt_token
 from utils.session import (
-    get_current_user,
     create_oauth_state,
     create_session_token,
+    get_current_user,
     set_session_cookie,
     verify_oauth_state,
 )
@@ -37,14 +36,23 @@ OAUTH_STATE_COOKIE = "sentinel_oauth_state"
 
 
 @router.get("/login")
-def github_login():
+def github_login(
+    request: Request,
+    db: Session = Depends(get_db),
+):
     if not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET:
         raise HTTPException(
             status_code=500,
             detail="GitHub OAuth is not configured.",
         )
 
-    state = create_oauth_state()
+    link_user_id = None
+    try:
+        link_user_id = get_current_user(request, db).id
+    except HTTPException:
+        link_user_id = None
+
+    state = create_oauth_state(link_user_id)
     secure_cookie = APP_ENV == "production"
 
     github_url = (
@@ -77,19 +85,19 @@ def github_callback(
     db: Session = Depends(get_db),
 ):
     stored_state = request.cookies.get(OAUTH_STATE_COOKIE)
-    expected_nonce = verify_oauth_state(state)
+    verified_state = verify_oauth_state(state)
 
-    if not stored_state or stored_state != state or not expected_nonce:
+    if not stored_state or stored_state != state or not verified_state:
         raise HTTPException(
             status_code=400,
             detail="Invalid or expired OAuth state.",
         )
 
+    _nonce, linked_user_id = verified_state
+
     token_response = requests.post(
         "https://github.com/login/oauth/access_token",
-        headers={
-            "Accept": "application/json",
-        },
+        headers={"Accept": "application/json"},
         data={
             "client_id": GITHUB_CLIENT_ID,
             "client_secret": GITHUB_CLIENT_SECRET,
@@ -106,14 +114,14 @@ def github_callback(
         )
 
     token_data = token_response.json()
+    access_token = token_data.get("access_token")
 
-    if "access_token" not in token_data:
+    if not access_token:
         raise HTTPException(
             status_code=502,
             detail="GitHub did not return an access token.",
         )
 
-    access_token = token_data["access_token"]
     refresh_token = token_data.get("refresh_token")
 
     user_response = requests.get(
@@ -133,10 +141,35 @@ def github_callback(
         )
 
     github_user = user_response.json()
-
     github_user_id = str(github_user["id"])
     github_username = github_user["login"]
-    github_email = github_user.get("email")
+    github_email = (github_user.get("email") or "").strip().lower() or None
+
+    # GitHub often hides the public email. Use the authorized user:email
+    # scope to obtain the primary verified email for account linking.
+    if not github_email:
+        emails_response = requests.get(
+            "https://api.github.com/user/emails",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2026-03-10",
+            },
+            timeout=15,
+        )
+
+        if emails_response.status_code == 200:
+            github_emails = emails_response.json()
+            verified_primary = next(
+                (
+                    item.get("email")
+                    for item in github_emails
+                    if item.get("verified") and item.get("primary")
+                ),
+                None,
+            )
+            if verified_primary:
+                github_email = verified_primary.strip().lower()
 
     user = (
         db.query(User)
@@ -144,11 +177,50 @@ def github_callback(
         .first()
     )
 
+    # If a signed-in email/password user is linking GitHub, attach GitHub
+    # to that existing account instead of creating a second SentinelAI user.
+    if user is None and linked_user_id is not None:
+        user = db.get(User, linked_user_id)
+        if user is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Your SentinelAI session is no longer valid. Please sign in again.",
+            )
+
+        existing_link = (
+            db.query(User)
+            .filter(
+                User.github_id == github_user_id,
+                User.id != user.id,
+            )
+            .first()
+        )
+        if existing_link is not None:
+            raise HTTPException(
+                status_code=409,
+                detail="This GitHub account is already connected to another SentinelAI account.",
+            )
+
+        user.github_id = github_user_id
+
+    # When the user starts from the public login screen, match a verified
+    # GitHub email to an existing email/password account when possible.
+    if user is None and github_email:
+        user = (
+            db.query(User)
+            .filter(User.email == github_email)
+            .first()
+        )
+
+        if user is not None:
+            user.github_id = github_user_id
+
     if user is None:
         user = User(
             github_id=github_user_id,
             username=github_username,
             email=github_email,
+            password_hash=None,
         )
         db.add(user)
         db.flush()
@@ -156,10 +228,10 @@ def github_callback(
         user.username = github_username
         if github_email:
             user.email = github_email
+        user.github_id = github_user_id
 
     expires_in = token_data.get("expires_in")
     token_expires_at = None
-
     if expires_in is not None:
         token_expires_at = datetime.now(timezone.utc) + timedelta(
             seconds=int(expires_in)

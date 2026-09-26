@@ -3,10 +3,6 @@ const API_TIMEOUT_MS = 15000;
 const SESSION_TOKEN_KEY = "sentinelai_session_token";
 
 
-/* =========================
-   OAUTH SESSION BOOTSTRAP
-========================= */
-
 (function captureOAuthToken() {
     const hash = window.location.hash || "";
 
@@ -14,62 +10,50 @@ const SESSION_TOKEN_KEY = "sentinelai_session_token";
         return;
     }
 
-    const params = new URLSearchParams(
-        hash.slice(1)
-    );
-
+    const params = new URLSearchParams(hash.slice(1));
     const token = params.get("auth");
 
     if (!token) {
         return;
     }
 
-    sessionStorage.setItem(
-        SESSION_TOKEN_KEY,
-        token
-    );
+    sessionStorage.setItem(SESSION_TOKEN_KEY, token);
 
-    // Remove the token from the address bar immediately.
     window.history.replaceState(
         null,
         document.title,
-        window.location.pathname +
-            window.location.search
+        window.location.pathname + window.location.search
     );
 })();
 
 
 function getSessionToken() {
-    return sessionStorage.getItem(
-        SESSION_TOKEN_KEY
-    );
+    return sessionStorage.getItem(SESSION_TOKEN_KEY);
+}
+
+
+function setSessionToken(token) {
+    if (token) {
+        sessionStorage.setItem(SESSION_TOKEN_KEY, token);
+    }
 }
 
 
 function clearSessionToken() {
-    sessionStorage.removeItem(
-        SESSION_TOKEN_KEY
-    );
+    sessionStorage.removeItem(SESSION_TOKEN_KEY);
 }
 
 
-async function apiRequest(
-    endpoint,
-    options = {}
-) {
+async function apiRequest(endpoint, options = {}) {
     const controller = new AbortController();
-
     const timeoutId = setTimeout(
         () => controller.abort(),
         API_TIMEOUT_MS
     );
 
-    const method = (
-        options.method || "GET"
-    ).toUpperCase();
-
+    const method = (options.method || "GET").toUpperCase();
     const headers = {
-        "Accept": "application/json",
+        Accept: "application/json",
         ...(options.headers || {})
     };
 
@@ -78,15 +62,12 @@ async function apiRequest(
         method !== "GET" &&
         method !== "HEAD"
     ) {
-        headers["Content-Type"] =
-            "application/json";
+        headers["Content-Type"] = "application/json";
     }
 
     const token = getSessionToken();
-
     if (token) {
-        headers["Authorization"] =
-            `Bearer ${token}`;
+        headers.Authorization = `Bearer ${token}`;
     }
 
     try {
@@ -102,7 +83,6 @@ async function apiRequest(
         );
 
         let data = {};
-
         try {
             data = await response.json();
         } catch {
@@ -114,15 +94,13 @@ async function apiRequest(
                 clearSessionToken();
             }
 
-            const message =
+            throw new Error(
                 data?.detail ||
-                `Request failed with status ${response.status}`;
-
-            throw new Error(message);
+                `Request failed with status ${response.status}`
+            );
         }
 
         return data;
-
     } catch (error) {
         if (error.name === "AbortError") {
             throw new Error(
@@ -131,7 +109,6 @@ async function apiRequest(
         }
 
         throw error;
-
     } finally {
         clearTimeout(timeoutId);
     }
@@ -143,9 +120,51 @@ async function apiRequest(
 ========================= */
 
 async function getCurrentUser() {
-    return apiRequest(
-        "/api/v1/auth/me"
+    return apiRequest("/api/v1/auth/me");
+}
+
+
+async function registerAccount({
+    name,
+    email,
+    password,
+    confirmPassword
+}) {
+    const data = await apiRequest(
+        "/api/v1/auth/register",
+        {
+            method: "POST",
+            body: JSON.stringify({
+                name,
+                email,
+                password,
+                confirm_password: confirmPassword
+            })
+        }
     );
+
+    setSessionToken(data.session_token);
+    return data;
+}
+
+
+async function loginAccount({
+    email,
+    password
+}) {
+    const data = await apiRequest(
+        "/api/v1/auth/login",
+        {
+            method: "POST",
+            body: JSON.stringify({
+                email,
+                password
+            })
+        }
+    );
+
+    setSessionToken(data.session_token);
+    return data;
 }
 
 
@@ -195,9 +214,7 @@ async function syncGitHubRepositories() {
 ========================= */
 
 async function getRepositories() {
-    return apiRequest(
-        "/api/v1/repositories/"
-    );
+    return apiRequest("/api/v1/repositories/");
 }
 
 
@@ -205,9 +222,7 @@ async function getRepositories() {
    SCANS
 ========================= */
 
-async function createScan(
-    repositoryId
-) {
+async function createScan(repositoryId) {
     return apiRequest(
         "/api/v1/scans/",
         {
@@ -220,9 +235,7 @@ async function createScan(
 }
 
 
-async function getScanVulnerabilities(
-    scanId
-) {
+async function getScanVulnerabilities(scanId) {
     return apiRequest(
         `/api/v1/scans/${scanId}/vulnerabilities`
     );
@@ -233,9 +246,7 @@ async function getScanVulnerabilities(
    VULNERABILITIES
 ========================= */
 
-async function getVulnerabilitySource(
-    vulnerabilityId
-) {
+async function getVulnerabilitySource(vulnerabilityId) {
     return apiRequest(
         `/api/v1/fixes/vulnerabilities/${vulnerabilityId}/source`
     );
@@ -246,9 +257,7 @@ async function getVulnerabilitySource(
    FIXES
 ========================= */
 
-async function createFix(
-    vulnerabilityId
-) {
+async function createFix(vulnerabilityId) {
     return apiRequest(
         "/api/v1/fixes/",
         {
@@ -295,9 +304,7 @@ async function applyFix(fixId) {
    PULL REQUESTS
 ========================= */
 
-async function getPullRequestStatus(
-    pullRequestId
-) {
+async function getPullRequestStatus(pullRequestId) {
     return apiRequest(
         `/api/v1/pull-requests/${pullRequestId}`
     );
@@ -306,6 +313,8 @@ async function getPullRequestStatus(
 
 window.apiRequest = apiRequest;
 window.getCurrentUser = getCurrentUser;
+window.registerAccount = registerAccount;
+window.loginAccount = loginAccount;
 window.logout = logout;
 window.connectGitHub = connectGitHub;
 window.getGitHubRepositories = getGitHubRepositories;

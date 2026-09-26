@@ -11,9 +11,6 @@ from models.github_connection import GitHubConnection
 
 
 def migrate_repository_uniqueness():
-    # Older deployments used a global UNIQUE constraint on github_repo_id.
-    # Multi-user support requires the same GitHub repository to be represented
-    # separately for different SentinelAI users.
     with engine.begin() as connection:
         try:
             connection.execute(
@@ -30,13 +27,48 @@ def migrate_repository_uniqueness():
                 )
             )
         except Exception:
-            # Non-PostgreSQL development databases can skip this migration.
+            pass
+
+
+def migrate_user_auth():
+    with engine.begin() as connection:
+        try:
+            connection.execute(
+                text(
+                    "ALTER TABLE users "
+                    "ALTER COLUMN github_id DROP NOT NULL"
+                )
+            )
+        except Exception:
+            pass
+
+        try:
+            connection.execute(
+                text(
+                    "ALTER TABLE users "
+                    "ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"
+                )
+            )
+        except Exception:
+            pass
+
+        try:
+            connection.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS "
+                    "uq_users_email "
+                    "ON users (email) "
+                    "WHERE email IS NOT NULL"
+                )
+            )
+        except Exception:
             pass
 
 
 def create_tables():
     Base.metadata.create_all(bind=engine)
     migrate_repository_uniqueness()
+    migrate_user_auth()
     print("Database tables created successfully!")
 
 

@@ -120,11 +120,12 @@ async function loadSettings() {
 
         if (!session.authenticated) {
             connectionMessage.textContent =
-                "No GitHub account is connected.";
+                "No active SentinelAI session.";
             userDetails.innerHTML = "";
         } else {
-            connectionMessage.textContent =
-                "SentinelAI is connected to your GitHub account.";
+            connectionMessage.textContent = session.github_connected
+                ? "SentinelAI account is active and GitHub is connected."
+                : "SentinelAI account is active. Connect GitHub to scan repositories and create pull requests.";
 
             userDetails.innerHTML = `
                 <p>

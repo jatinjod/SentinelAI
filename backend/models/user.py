@@ -10,16 +10,21 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    github_id: Mapped[str] = mapped_column(
+    github_id: Mapped[str | None] = mapped_column(
         String(100),
         unique=True,
-        nullable=False,
+        nullable=True,
     )
     username: Mapped[str] = mapped_column(
         String(100),
         nullable=False,
     )
     email: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        unique=False,
+    )
+    password_hash: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )

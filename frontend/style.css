@@ -1609,3 +1609,165 @@ button:focus-visible {
         line-height: 1.6;
     }
 }
+
+/* =========================
+   EMAIL AUTHENTICATION
+========================= */
+
+.auth-divider {
+    width: min(420px, 100%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 18px 0 14px;
+    color: #626f83;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .16em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,.08);
+}
+
+.email-auth-form {
+    width: min(420px, 100%);
+}
+
+.auth-field {
+    margin-top: 11px;
+}
+
+.auth-field:first-child {
+    margin-top: 0;
+}
+
+.auth-field label {
+    display: block;
+    margin-bottom: 6px;
+    color: #aab4c3;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.auth-field input {
+    width: 100%;
+    height: 46px;
+    padding: 0 13px;
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 11px;
+    outline: none;
+    background: rgba(255,255,255,.035);
+    color: #f3f6fb;
+    transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+
+.auth-field input::placeholder {
+    color: #5f6b7d;
+}
+
+.auth-field input:focus {
+    border-color: rgba(109,124,255,.65);
+    background: rgba(109,124,255,.055);
+    box-shadow: 0 0 0 3px rgba(109,124,255,.08);
+}
+
+.password-field-wrap {
+    position: relative;
+}
+
+.password-field-wrap input {
+    padding-right: 64px;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 7px;
+    transform: translateY(-50%);
+    min-width: 50px;
+    height: 32px;
+    padding: 0 8px;
+    border-radius: 8px;
+    background: transparent;
+    color: #8c98aa;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.password-toggle:hover {
+    background: rgba(255,255,255,.05);
+    color: #dfe5ee;
+}
+
+.auth-form-message {
+    min-height: 18px;
+    margin: 9px 0 0;
+    color: #ff7d8d;
+    font-size: 10px;
+    line-height: 1.45;
+}
+
+.email-auth-submit {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 8px;
+    border-radius: 11px;
+    background: linear-gradient(135deg, #7683ff, #5b6af0);
+    color: #fff;
+    font-weight: 780;
+    box-shadow: 0 12px 28px rgba(89,105,240,.22);
+    transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease;
+}
+
+.email-auth-submit:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 32px rgba(89,105,240,.3);
+}
+
+.email-auth-submit:disabled {
+    cursor: wait;
+    opacity: .65;
+}
+
+.auth-switch-row {
+    width: min(420px, 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 12px;
+    color: #6e7b8e;
+    font-size: 10px;
+}
+
+.auth-switch-button {
+    padding: 2px 0;
+    background: transparent;
+    color: #9aa5ff;
+    font-size: 10px;
+    font-weight: 750;
+}
+
+.auth-switch-button:hover {
+    color: #c1c7ff;
+    text-decoration: underline;
+}
+
+@media (max-width: 760px) {
+    .auth-hero {
+        padding: 20px;
+    }
+
+    .github-login-button,
+    .auth-divider,
+    .email-auth-form,
+    .auth-switch-row,
+    .auth-security-note {
+        width: 100%;
+    }
+}

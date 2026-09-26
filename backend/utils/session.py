@@ -55,24 +55,27 @@ def _verify(token: str) -> Optional[str]:
         return None
 
 
-def create_oauth_state() -> str:
+def create_oauth_state(user_id: int | None = None) -> str:
     nonce = secrets.token_urlsafe(32)
     expires_at = int(time.time()) + 600
-    return _sign(f"oauth|{expires_at}|{nonce}")
+    link_id = str(user_id or 0)
+    return _sign(f"oauth|{expires_at}|{nonce}|{link_id}")
 
 
-def verify_oauth_state(state: str) -> Optional[str]:
+def verify_oauth_state(state: str) -> tuple[str, int | None] | None:
     payload = _verify(state)
     if not payload:
         return None
 
     try:
-        purpose, expires_at, nonce = payload.split("|", 2)
+        purpose, expires_at, nonce, link_id = payload.split("|", 3)
         if purpose != "oauth":
             return None
         if int(expires_at) < int(time.time()):
             return None
-        return nonce
+
+        linked_user_id = int(link_id) if link_id != "0" else None
+        return nonce, linked_user_id
     except (ValueError, TypeError):
         return None
 
@@ -84,12 +87,16 @@ def create_session_token(user_id: int) -> str:
 
 
 def get_user_id_from_session(request: Request) -> Optional[int]:
-    token = request.cookies.get(SESSION_COOKIE_NAME)
+    # Prefer the bearer token. This avoids stale cross-origin cookies
+    # overriding the current frontend session.
+    authorization = request.headers.get("Authorization", "")
+    token = None
+
+    if authorization.lower().startswith("bearer "):
+        token = authorization[7:].strip()
 
     if not token:
-        authorization = request.headers.get("Authorization", "")
-        if authorization.lower().startswith("bearer "):
-            token = authorization[7:].strip()
+        token = request.cookies.get(SESSION_COOKIE_NAME)
 
     if not token:
         return None
@@ -118,7 +125,7 @@ def get_current_user(
     if user_id is None:
         raise HTTPException(
             status_code=401,
-            detail="Authentication required. Connect GitHub first.",
+            detail="Authentication required. Please sign in.",
         )
 
     user = db.get(User, user_id)
@@ -126,7 +133,7 @@ def get_current_user(
     if user is None:
         raise HTTPException(
             status_code=401,
-            detail="Session is no longer valid. Connect GitHub again.",
+            detail="Session is no longer valid. Please sign in again.",
         )
 
     return user
