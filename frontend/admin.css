@@ -148,3 +148,41 @@ button { cursor: pointer; }
 .admin-data-notice { padding:11px 13px; border:1px solid rgba(245,185,66,.35); border-radius:10px; background:rgba(245,185,66,.08); color:var(--warning); font-size:11px; }
 .users-loading { padding:14px 18px; color:var(--muted); font-size:11px; }
 .loading-card { min-height:70px; display:grid; place-items:center; }
+
+
+/* Final admin header alignment */
+.admin-topbar {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+}
+.admin-topbar .top-actions {
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:10px;
+    flex:0 0 auto;
+}
+.admin-topbar .top-actions .ghost-button {
+    margin:0;
+    height:40px;
+    min-height:40px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    box-sizing:border-box;
+}
+.admin-topbar .top-actions a.ghost-button {
+    line-height:1;
+}
+@media (max-width:700px) {
+    .admin-topbar .top-actions {
+        width:100%;
+        justify-content:stretch;
+    }
+    .admin-topbar .top-actions .ghost-button {
+        flex:1 1 0;
+        min-width:0;
+    }
+}
