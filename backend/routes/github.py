@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from config import (
@@ -35,26 +35,14 @@ router = APIRouter(
 OAUTH_STATE_COOKIE = "sentinel_oauth_state"
 
 
-@router.get("/login")
-def github_login(
-    request: Request,
-    db: Session = Depends(get_db),
-):
+def _build_github_authorization_url(link_user_id: int | None) -> tuple[str, str]:
     if not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET:
         raise HTTPException(
             status_code=500,
             detail="GitHub OAuth is not configured.",
         )
 
-    link_user_id = None
-    try:
-        link_user_id = get_current_user(request, db).id
-    except HTTPException:
-        link_user_id = None
-
     state = create_oauth_state(link_user_id)
-    secure_cookie = APP_ENV == "production"
-
     github_url = (
         "https://github.com/login/oauth/authorize"
         f"?client_id={GITHUB_CLIENT_ID}"
@@ -62,19 +50,58 @@ def github_login(
         "&scope=read:user%20user:email%20repo"
         f"&state={state}"
     )
+    return github_url, state
 
-    redirect = RedirectResponse(url=github_url)
-    redirect.set_cookie(
+
+def _set_oauth_state_cookie(response, state: str):
+    response.set_cookie(
         key=OAUTH_STATE_COOKIE,
         value=state,
         httponly=True,
-        secure=secure_cookie,
+        secure=APP_ENV == "production",
         samesite="lax",
         max_age=600,
         path="/",
     )
+    return response
 
-    return redirect
+
+@router.get("/login-url")
+def github_login_url(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Return an OAuth URL while preserving the currently signed-in SentinelAI user.
+
+    The frontend calls this with its bearer session token, allowing GitHub OAuth to
+    link to the current SentinelAI account instead of silently switching accounts.
+    """
+    link_user_id = None
+    try:
+        link_user_id = get_current_user(request, db).id
+    except HTTPException:
+        pass
+
+    github_url, state = _build_github_authorization_url(link_user_id)
+    response = JSONResponse({"authorization_url": github_url})
+    return _set_oauth_state_cookie(response, state)
+
+
+@router.get("/login")
+def github_login(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Browser fallback for direct OAuth navigation."""
+    link_user_id = None
+    try:
+        link_user_id = get_current_user(request, db).id
+    except HTTPException:
+        pass
+
+    github_url, state = _build_github_authorization_url(link_user_id)
+    redirect = RedirectResponse(url=github_url)
+    return _set_oauth_state_cookie(redirect, state)
 
 
 @router.get("/callback")
@@ -171,15 +198,10 @@ def github_callback(
             if verified_primary:
                 github_email = verified_primary.strip().lower()
 
-    user = (
-        db.query(User)
-        .filter(User.github_id == github_user_id)
-        .first()
-    )
-
-    # If a signed-in email/password user is linking GitHub, attach GitHub
-    # to that existing account instead of creating a second SentinelAI user.
-    if user is None and linked_user_id is not None:
+    # If a signed-in SentinelAI user starts GitHub OAuth, that user owns the
+    # linking operation. Never silently switch the user to another SentinelAI
+    # account just because the GitHub account is already linked elsewhere.
+    if linked_user_id is not None:
         user = db.get(User, linked_user_id)
         if user is None:
             raise HTTPException(
@@ -198,37 +220,49 @@ def github_callback(
         if existing_link is not None:
             raise HTTPException(
                 status_code=409,
-                detail="This GitHub account is already connected to another SentinelAI account.",
+                detail="This GitHub account is already connected to another SentinelAI account. Sign in to that account or use a different GitHub account.",
             )
 
         user.github_id = github_user_id
 
-    # When the user starts from the public login screen, match a verified
-    # GitHub email to an existing email/password account when possible.
-    if user is None and github_email:
+    else:
+        # A public GitHub login may reuse an existing GitHub-linked account.
         user = (
             db.query(User)
-            .filter(User.email == github_email)
+            .filter(User.github_id == github_user_id)
             .first()
         )
 
-        if user is not None:
-            user.github_id = github_user_id
+        # If this GitHub account has no SentinelAI account yet, match a
+        # verified GitHub email to an existing email/password account.
+        if user is None and github_email:
+            user = (
+                db.query(User)
+                .filter(User.email == github_email)
+                .first()
+            )
+            if user is not None:
+                if user.github_id and user.github_id != github_user_id:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="This email is already linked to a different GitHub account.",
+                    )
+                user.github_id = github_user_id
 
-    if user is None:
-        user = User(
-            github_id=github_user_id,
-            username=github_username,
-            email=github_email,
-            password_hash=None,
-        )
-        db.add(user)
-        db.flush()
-    else:
-        user.username = github_username
-        if github_email:
-            user.email = github_email
-        user.github_id = github_user_id
+        if user is None:
+            user = User(
+                github_id=github_user_id,
+                username=github_username,
+                email=github_email,
+                password_hash=None,
+            )
+            db.add(user)
+            db.flush()
+
+    user.username = github_username
+    if github_email:
+        user.email = github_email
+    user.github_id = github_user_id
 
     expires_in = token_data.get("expires_in")
     token_expires_at = None

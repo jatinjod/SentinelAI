@@ -94,13 +94,10 @@ async function apiRequest(endpoint, options = {}) {
                 clearSessionToken();
             }
 
-            const error = new Error(
+            throw new Error(
                 data?.detail ||
                 `Request failed with status ${response.status}`
             );
-            error.status = response.status;
-            error.code = data?.code;
-            throw error;
         }
 
         return data;
@@ -189,9 +186,21 @@ async function logout() {
    GITHUB
 ========================= */
 
-function connectGitHub() {
-    window.location.href =
-        `${API_BASE_URL}/api/v1/github/login`;
+async function connectGitHub() {
+    const result = await apiRequest(
+        "/api/v1/github/login-url"
+    );
+
+    const authorizationUrl =
+        result?.authorization_url;
+
+    if (!authorizationUrl) {
+        throw new Error(
+            "Unable to start GitHub authorization."
+        );
+    }
+
+    window.location.href = authorizationUrl;
 }
 
 
