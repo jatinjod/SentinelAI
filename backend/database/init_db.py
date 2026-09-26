@@ -89,11 +89,45 @@ def migrate_user_profile():
             pass
 
 
+def migrate_user_admin():
+    with engine.begin() as connection:
+        try:
+            connection.execute(
+                text(
+                    "ALTER TABLE users "
+                    "ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE"
+                )
+            )
+        except Exception:
+            pass
+
+        try:
+            connection.execute(
+                text(
+                    "ALTER TABLE users "
+                    "ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE"
+                )
+            )
+        except Exception:
+            pass
+
+        try:
+            connection.execute(text("UPDATE users SET is_admin = FALSE WHERE is_admin IS NULL"))
+        except Exception:
+            pass
+
+        try:
+            connection.execute(text("UPDATE users SET is_active = TRUE WHERE is_active IS NULL"))
+        except Exception:
+            pass
+
+
 def create_tables():
     Base.metadata.create_all(bind=engine)
     migrate_repository_uniqueness()
     migrate_user_auth()
     migrate_user_profile()
+    migrate_user_admin()
     print("Database tables created successfully!")
 
 

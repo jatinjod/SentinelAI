@@ -14,6 +14,7 @@ from routes.scans import router as scans_router
 from routes.fixes import router as fixes_router
 from routes.github import router as github_router
 from routes.pull_requests import router as pull_requests_router
+from routes.admin import router as admin_router
 
 
 @asynccontextmanager
@@ -50,6 +51,7 @@ app.include_router(scans_router)
 app.include_router(fixes_router)
 app.include_router(github_router)
 app.include_router(pull_requests_router)
+app.include_router(admin_router)
 
 
 @app.get("/")

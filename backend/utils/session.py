@@ -136,6 +136,12 @@ def get_current_user(
             detail="Session is no longer valid. Please sign in again.",
         )
 
+    if hasattr(user, "is_active") and not user.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="Your SentinelAI account has been disabled. Contact an administrator.",
+        )
+
     return user
 
 

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SentinelAI Admin</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <div class="admin-shell">
+        <header class="admin-topbar">
+            <div class="brand-block">
+                <div class="brand-icon">S</div>
+                <div>
+                    <div class="brand-name">SentinelAI</div>
+                    <div class="brand-subtitle">Admin Control Center</div>
+                </div>
+            </div>
+            <div class="top-actions">
+                <a class="ghost-button" href="index.html">← Back to app</a>
+                <button id="logoutButton" class="ghost-button" type="button">Logout</button>
+            </div>
+        </header>
+
+        <main class="admin-main">
+            <div id="adminBanner" class="admin-banner">
+                <div>
+                    <span class="eyebrow">SECURE ADMIN AREA</span>
+                    <h1>Platform control center</h1>
+                    <p>Monitor and manage SentinelAI accounts, GitHub access, scans, AI fixes and pull requests.</p>
+                </div>
+                <span class="admin-badge">ADMIN</span>
+            </div>
+
+            <section id="content" class="content">
+                <div class="loading-card">Checking administrator access…</div>
+            </section>
+        </main>
+    </div>
+
+    <div id="toast" class="toast" hidden></div>
+    <script src="admin.js" defer></script>
+</body>
+</html>
