@@ -85,6 +85,12 @@ def create_session_token(user_id: int) -> str:
 
 def get_user_id_from_session(request: Request) -> Optional[int]:
     token = request.cookies.get(SESSION_COOKIE_NAME)
+
+    if not token:
+        authorization = request.headers.get("Authorization", "")
+        if authorization.lower().startswith("bearer "):
+            token = authorization[7:].strip()
+
     if not token:
         return None
 
@@ -126,13 +132,17 @@ def get_current_user(
     return user
 
 
-def set_session_cookie(response, user_id: int) -> None:
+def set_session_cookie(
+    response,
+    user_id: int,
+    token: Optional[str] = None,
+) -> None:
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
-        value=create_session_token(user_id),
+        value=token or create_session_token(user_id),
         httponly=True,
-        secure=True,
-        samesite="none",
+        secure=APP_ENV == "production",
+        samesite="lax",
         max_age=60 * 60 * 24 * 7,
         path="/",
     )

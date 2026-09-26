@@ -22,6 +22,7 @@ from utils.security import encrypt_token
 from utils.session import (
     get_current_user,
     create_oauth_state,
+    create_session_token,
     set_session_cookie,
     verify_oauth_state,
 )
@@ -60,7 +61,7 @@ def github_login():
         value=state,
         httponly=True,
         secure=secure_cookie,
-        samesite="none",
+        samesite="lax",
         max_age=600,
         path="/",
     )
@@ -197,8 +198,15 @@ def github_callback(
 
     db.commit()
 
-    redirect = RedirectResponse(url=FRONTEND_URL)
-    set_session_cookie(redirect, user.id)
+    session_token = create_session_token(user.id)
+    redirect = RedirectResponse(
+        url=f"{FRONTEND_URL}#auth={session_token}"
+    )
+    set_session_cookie(
+        redirect,
+        user.id,
+        session_token,
+    )
     redirect.delete_cookie(
         key=OAUTH_STATE_COOKIE,
         path="/",

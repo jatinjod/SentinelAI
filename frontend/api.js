@@ -1,39 +1,140 @@
 const API_BASE_URL = "https://sentinelai-backend-pwur.onrender.com";
+const API_TIMEOUT_MS = 15000;
+const SESSION_TOKEN_KEY = "sentinelai_session_token";
+
+
+/* =========================
+   OAUTH SESSION BOOTSTRAP
+========================= */
+
+(function captureOAuthToken() {
+    const hash = window.location.hash || "";
+
+    if (!hash.startsWith("#")) {
+        return;
+    }
+
+    const params = new URLSearchParams(
+        hash.slice(1)
+    );
+
+    const token = params.get("auth");
+
+    if (!token) {
+        return;
+    }
+
+    sessionStorage.setItem(
+        SESSION_TOKEN_KEY,
+        token
+    );
+
+    // Remove the token from the address bar immediately.
+    window.history.replaceState(
+        null,
+        document.title,
+        window.location.pathname +
+            window.location.search
+    );
+})();
+
+
+function getSessionToken() {
+    return sessionStorage.getItem(
+        SESSION_TOKEN_KEY
+    );
+}
+
+
+function clearSessionToken() {
+    sessionStorage.removeItem(
+        SESSION_TOKEN_KEY
+    );
+}
 
 
 async function apiRequest(
     endpoint,
     options = {}
 ) {
-    const response = await fetch(
-        `${API_BASE_URL}${endpoint}`,
-        {
-            credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-                ...(options.headers || {})
-            },
-            ...options,
-        }
+    const controller = new AbortController();
+
+    const timeoutId = setTimeout(
+        () => controller.abort(),
+        API_TIMEOUT_MS
     );
 
-    let data;
+    const method = (
+        options.method || "GET"
+    ).toUpperCase();
+
+    const headers = {
+        "Accept": "application/json",
+        ...(options.headers || {})
+    };
+
+    if (
+        options.body &&
+        method !== "GET" &&
+        method !== "HEAD"
+    ) {
+        headers["Content-Type"] =
+            "application/json";
+    }
+
+    const token = getSessionToken();
+
+    if (token) {
+        headers["Authorization"] =
+            `Bearer ${token}`;
+    }
 
     try {
-        data = await response.json();
-    } catch {
-        data = {};
+        const response = await fetch(
+            `${API_BASE_URL}${endpoint}`,
+            {
+                ...options,
+                method,
+                credentials: "include",
+                headers,
+                signal: controller.signal
+            }
+        );
+
+        let data = {};
+
+        try {
+            data = await response.json();
+        } catch {
+            data = {};
+        }
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                clearSessionToken();
+            }
+
+            const message =
+                data?.detail ||
+                `Request failed with status ${response.status}`;
+
+            throw new Error(message);
+        }
+
+        return data;
+
+    } catch (error) {
+        if (error.name === "AbortError") {
+            throw new Error(
+                "Backend request timed out. Please try again."
+            );
+        }
+
+        throw error;
+
+    } finally {
+        clearTimeout(timeoutId);
     }
-
-    if (!response.ok) {
-        const message =
-            data?.detail ||
-            `Request failed with status ${response.status}`;
-
-        throw new Error(message);
-    }
-
-    return data;
 }
 
 
@@ -49,12 +150,16 @@ async function getCurrentUser() {
 
 
 async function logout() {
-    return apiRequest(
-        "/api/v1/auth/logout",
-        {
-            method: "POST"
-        }
-    );
+    try {
+        return await apiRequest(
+            "/api/v1/auth/logout",
+            {
+                method: "POST"
+            }
+        );
+    } finally {
+        clearSessionToken();
+    }
 }
 
 
@@ -100,7 +205,9 @@ async function getRepositories() {
    SCANS
 ========================= */
 
-async function createScan(repositoryId) {
+async function createScan(
+    repositoryId
+) {
     return apiRequest(
         "/api/v1/scans/",
         {
@@ -113,7 +220,9 @@ async function createScan(repositoryId) {
 }
 
 
-async function getScanVulnerabilities(scanId) {
+async function getScanVulnerabilities(
+    scanId
+) {
     return apiRequest(
         `/api/v1/scans/${scanId}/vulnerabilities`
     );
@@ -137,7 +246,9 @@ async function getVulnerabilitySource(
    FIXES
 ========================= */
 
-async function createFix(vulnerabilityId) {
+async function createFix(
+    vulnerabilityId
+) {
     return apiRequest(
         "/api/v1/fixes/",
         {
