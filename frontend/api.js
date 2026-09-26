@@ -36,7 +36,7 @@ function getSessionToken() {
 function setSessionToken(token) {
     if (token) {
         sessionStorage.setItem(SESSION_TOKEN_KEY, token);
-    localStorage.setItem(SESSION_TOKEN_KEY, token);
+        localStorage.setItem(SESSION_TOKEN_KEY, token);
     }
 }
 
