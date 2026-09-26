@@ -62,6 +62,14 @@ export async function render(container) {
                             <small>Export & account</small>
                         </span>
                     </button>
+
+                    <button class="settings-tab settings-admin-tab" data-settings-tab="admin" hidden>
+                        <span>🛡</span>
+                        <span>
+                            <strong>Admin Panel</strong>
+                            <small>Platform controls</small>
+                        </span>
+                    </button>
                 </aside>
 
                 <div class="settings-content">
@@ -318,6 +326,41 @@ export async function render(container) {
                             </button>
                         </div>
                     </section>
+
+                    <section class="settings-section" data-settings-section="admin">
+                        <div class="settings-section-head">
+                            <div>
+                                <h3>Admin Control Center</h3>
+                                <p>Manage SentinelAI users, security activity, repositories and platform operations.</p>
+                            </div>
+                            <span class="settings-pill success">Administrator</span>
+                        </div>
+
+                        <div class="settings-data-card settings-admin-card">
+                            <div>
+                                <strong>SentinelAI Admin Panel</strong>
+                                <p>
+                                    Open the dedicated control center to manage platform-wide
+                                    users, GitHub connections, scans, vulnerabilities, AI fixes and pull requests.
+                                </p>
+                            </div>
+
+                            <a
+                                class="primary-button settings-admin-open"
+                                href="admin.html"
+                            >
+                                Open Admin Panel →
+                            </a>
+                        </div>
+
+                        <div class="settings-info-card">
+                            <strong>Administrator access</strong>
+                            <p>
+                                This area is visible only to verified administrator accounts.
+                                Normal users cannot access the admin controls.
+                            </p>
+                        </div>
+                    </section>
                 </div>
             </div>
         </section>
@@ -326,8 +369,60 @@ export async function render(container) {
     bindSettingsNavigation();
     bindPasswordToggles();
     await loadSettingsData();
+    await loadAdminAccess();
     bindSettingsActions();
     loadPreferences();
+}
+
+
+async function loadAdminAccess() {
+    const adminTab = document.querySelector(
+        '.settings-admin-tab[data-settings-tab="admin"]'
+    );
+
+    if (!adminTab) {
+        return;
+    }
+
+    try {
+        const API_BASE_URL =
+            window.API_BASE_URL ||
+            "https://sentinelai-backend-pwur.onrender.com";
+
+        const token =
+            sessionStorage.getItem("sentinelai_session_token") ||
+            localStorage.getItem("sentinelai_session_token") ||
+            "";
+
+        const headers = {
+            "Accept": "application/json"
+        };
+
+        if (token) {
+            headers.Authorization = `Bearer ${token}`;
+        }
+
+        const response = await fetch(
+            `${API_BASE_URL}/api/v1/admin/me`,
+            {
+                method: "GET",
+                headers,
+                credentials: "include"
+            }
+        );
+
+        if (!response.ok) {
+            adminTab.hidden = true;
+            return;
+        }
+
+        const data = await response.json();
+
+        adminTab.hidden = data?.is_admin !== true;
+    } catch (error) {
+        console.warn("Admin access check failed:", error);
+        adminTab.hidden = true;
+    }
 }
 
 
@@ -1041,6 +1136,19 @@ function injectSettingsStyles() {
             font-size: 10px;
         }
 
+        .settings-admin-tab {
+            border: 1px solid rgba(109,124,255,.24);
+        }
+
+        .settings-admin-card {
+            align-items: center;
+        }
+
+        .settings-admin-open {
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
         .settings-content {
             min-width: 0;
         }
@@ -1537,7 +1645,7 @@ function injectSettingsStyles() {
             .settings-nav-card {
                 position: static;
                 display: grid;
-                grid-template-columns: repeat(5, minmax(0, 1fr));
+                grid-template-columns: repeat(6, minmax(0, 1fr));
                 overflow-x: auto;
             }
 
@@ -1568,7 +1676,7 @@ function injectSettingsStyles() {
             }
 
             .settings-nav-card {
-                grid-template-columns: repeat(5, 155px);
+                grid-template-columns: repeat(6, 155px);
             }
 
             .settings-preference-row {
