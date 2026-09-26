@@ -64,11 +64,13 @@
                         <div id="nameFieldGroup" class="auth-field" hidden>
                             <label for="authName">Name</label>
                             <input id="authName" name="name" type="text" autocomplete="name" placeholder="Jatin" />
+                            <p id="nameFieldError" class="auth-field-error" role="alert" hidden></p>
                         </div>
 
                         <div class="auth-field">
                             <label for="authEmail">Email</label>
                             <input id="authEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+                            <p id="emailFieldError" class="auth-field-error" role="alert" hidden></p>
                         </div>
 
                         <div class="auth-field">
@@ -77,6 +79,7 @@
                                 <input id="authPassword" name="password" type="password" autocomplete="current-password" placeholder="At least 8 characters" required />
                                 <button class="password-toggle" type="button" data-target="authPassword" aria-label="Show password">Show</button>
                             </div>
+                            <p id="passwordFieldError" class="auth-field-error" role="alert" hidden></p>
                         </div>
 
                         <div id="confirmPasswordGroup" class="auth-field" hidden>
@@ -85,6 +88,7 @@
                                 <input id="authConfirmPassword" name="confirmPassword" type="password" autocomplete="new-password" placeholder="Repeat your password" />
                                 <button class="password-toggle" type="button" data-target="authConfirmPassword" aria-label="Show confirm password">Show</button>
                             </div>
+                            <p id="confirmPasswordFieldError" class="auth-field-error" role="alert" hidden></p>
                         </div>
 
                         <p id="authFormMessage" class="auth-form-message" role="alert"></p>

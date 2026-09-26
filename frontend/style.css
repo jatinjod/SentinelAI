@@ -1676,6 +1676,19 @@ button:focus-visible {
     box-shadow: 0 0 0 3px rgba(109,124,255,.08);
 }
 
+.auth-field input.input-error {
+    border-color: rgba(255, 92, 112, .8);
+    background: rgba(255, 92, 112, .045);
+    box-shadow: 0 0 0 3px rgba(255, 92, 112, .06);
+}
+
+.auth-field-error {
+    margin: 6px 2px 0;
+    color: #ff7d8d;
+    font-size: 10px;
+    line-height: 1.35;
+}
+
 .password-field-wrap {
     position: relative;
 }

@@ -94,10 +94,13 @@ async function apiRequest(endpoint, options = {}) {
                 clearSessionToken();
             }
 
-            throw new Error(
+            const error = new Error(
                 data?.detail ||
                 `Request failed with status ${response.status}`
             );
+            error.status = response.status;
+            error.code = data?.code;
+            throw error;
         }
 
         return data;

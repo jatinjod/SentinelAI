@@ -88,8 +88,53 @@ function updateAuthMode() {
     if (submit) submit.textContent = register ? "Create account" : "Sign in";
     if (switchText) switchText.textContent = register ? "Already have an account?" : "New to SentinelAI?";
     if (switchButton) switchButton.textContent = register ? "Sign in" : "Create account";
-    if (message) message.textContent = "";
+    clearAuthFieldErrors();
     if (passwordInput) passwordInput.autocomplete = register ? "new-password" : "current-password";
+}
+
+
+function clearAuthFieldErrors() {
+    document.querySelectorAll(".auth-field-error").forEach((element) => {
+        element.textContent = "";
+        element.hidden = true;
+    });
+
+    document.querySelectorAll(".auth-field input").forEach((input) => {
+        input.removeAttribute("aria-invalid");
+        input.classList.remove("input-error");
+    });
+
+    const message = document.getElementById("authFormMessage");
+    if (message) message.textContent = "";
+}
+
+
+function setAuthFieldError(field, message) {
+    const idMap = {
+        name: "authName",
+        email: "authEmail",
+        password: "authPassword",
+        confirmPassword: "authConfirmPassword"
+    };
+
+    const input = document.getElementById(idMap[field]);
+    const error = document.getElementById(`${field}FieldError`);
+
+    if (input) {
+        input.setAttribute("aria-invalid", "true");
+        input.classList.add("input-error");
+        input.focus();
+    }
+
+    if (error) {
+        error.textContent = message;
+        error.hidden = false;
+    }
+}
+
+
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 
@@ -98,7 +143,6 @@ async function handleEmailAuthSubmit(event) {
 
     const form = event.currentTarget;
     const submit = document.getElementById("emailAuthSubmit");
-    const message = document.getElementById("authFormMessage");
 
     const data = new FormData(form);
     const name = String(data.get("name") || "").trim();
@@ -106,7 +150,45 @@ async function handleEmailAuthSubmit(event) {
     const password = String(data.get("password") || "");
     const confirmPassword = String(data.get("confirmPassword") || "");
 
-    if (message) message.textContent = "";
+    clearAuthFieldErrors();
+
+    let hasClientError = false;
+
+    if (!email) {
+        setAuthFieldError("email", "Enter your email address.");
+        hasClientError = true;
+    } else if (!isValidEmail(email)) {
+        setAuthFieldError("email", "Invalid email address.");
+        hasClientError = true;
+    }
+
+    if (!password) {
+        setAuthFieldError("password", "Enter your password.");
+        hasClientError = true;
+    } else if (authMode === "register" && password.length < 8) {
+        setAuthFieldError("password", "Password must be at least 8 characters.");
+        hasClientError = true;
+    }
+
+    if (authMode === "register") {
+        if (!name) {
+            setAuthFieldError("name", "Enter your name.");
+            hasClientError = true;
+        }
+
+        if (!confirmPassword) {
+            setAuthFieldError("confirmPassword", "Confirm your password.");
+            hasClientError = true;
+        } else if (password !== confirmPassword) {
+            setAuthFieldError("confirmPassword", "Passwords do not match.");
+            hasClientError = true;
+        }
+    }
+
+    if (hasClientError) {
+        return;
+    }
+
     if (submit) {
         submit.disabled = true;
         submit.textContent = authMode === "register" ? "Creating account..." : "Signing in...";
@@ -135,7 +217,39 @@ async function handleEmailAuthSubmit(event) {
         await bootstrapAuth();
     } catch (error) {
         console.error(error);
-        if (message) message.textContent = error.message;
+
+        const status = error.status;
+        const message = String(error.message || "");
+
+        if (authMode === "register" && status === 409) {
+            setAuthFieldError(
+                "email",
+                "An account with this email already exists. Sign in instead."
+            );
+        } else if (authMode === "login" && status === 401) {
+            // Avoid account enumeration: keep login failure non-specific.
+            setAuthFieldError(
+                "password",
+                "Incorrect email or password."
+            );
+        } else if (status === 422) {
+            const lower = message.toLowerCase();
+            if (lower.includes("password")) {
+                setAuthFieldError("password", message);
+            } else if (lower.includes("email")) {
+                setAuthFieldError("email", message);
+            } else if (lower.includes("name")) {
+                setAuthFieldError("name", message);
+            } else if (lower.includes("confirm")) {
+                setAuthFieldError("confirmPassword", message);
+            } else {
+                const formMessage = document.getElementById("authFormMessage");
+                if (formMessage) formMessage.textContent = message;
+            }
+        } else {
+            const formMessage = document.getElementById("authFormMessage");
+            if (formMessage) formMessage.textContent = message;
+        }
     } finally {
         if (submit) {
             submit.disabled = false;
