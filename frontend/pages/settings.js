@@ -368,8 +368,9 @@ export async function render(container) {
 
     bindSettingsNavigation();
     bindPasswordToggles();
+    // Render the settings UI immediately. Admin visibility is resolved in the background.
     await loadSettingsData();
-    await loadAdminAccess();
+    loadAdminAccess();
     bindSettingsActions();
     loadPreferences();
 }
@@ -388,17 +389,13 @@ async function loadAdminAccess() {
         return;
     }
 
-    // Secure default: hide both the tab and section until the backend
-    // explicitly confirms that the current authenticated user is an admin.
     const hideAdminUi = () => {
         adminTab.hidden = true;
         adminTab.style.display = "none";
         adminTab.setAttribute("aria-hidden", "true");
-
         adminSection.hidden = true;
         adminSection.style.display = "none";
         adminSection.setAttribute("aria-hidden", "true");
-
         if (adminTab.classList.contains("active")) {
             adminTab.classList.remove("active");
         }
@@ -408,14 +405,22 @@ async function loadAdminAccess() {
         adminTab.hidden = false;
         adminTab.style.display = "flex";
         adminTab.setAttribute("aria-hidden", "false");
-
         adminSection.hidden = false;
         adminSection.style.display = "none";
         adminSection.setAttribute("aria-hidden", "false");
     };
 
-    // Never trust a stale UI flag from a previous account.
-    hideAdminUi();
+    // No network wait for the first paint. The main app stores this flag only
+    // after /auth/me has confirmed the current account. The admin endpoint
+    // below still verifies the role in the background.
+    const localAdminHint = localStorage.getItem("sentinelai_is_admin") === "1";
+    const currentUserAdmin = window.__sentinelUser?.is_admin === true;
+
+    if (localAdminHint || currentUserAdmin) {
+        showAdminUi();
+    } else {
+        hideAdminUi();
+    }
 
     try {
         const API_BASE_URL =
@@ -427,13 +432,8 @@ async function loadAdminAccess() {
             localStorage.getItem("sentinelai_session_token") ||
             "";
 
-        const headers = {
-            "Accept": "application/json"
-        };
-
-        if (token) {
-            headers.Authorization = `Bearer ${token}`;
-        }
+        const headers = { Accept: "application/json" };
+        if (token) headers.Authorization = `Bearer ${token}`;
 
         const response = await fetch(
             `${API_BASE_URL}/api/v1/admin/me`,
@@ -451,15 +451,20 @@ async function loadAdminAccess() {
         }
 
         const data = await response.json();
-
         if (data?.is_admin === true) {
             showAdminUi();
+            localStorage.setItem("sentinelai_is_admin", "1");
         } else {
             hideAdminUi();
+            localStorage.setItem("sentinelai_is_admin", "0");
         }
     } catch (error) {
         console.warn("Admin access check failed:", error);
-        hideAdminUi();
+        // Keep a server-confirmed admin hint through transient network issues,
+        // but never reveal the controls for accounts without the hint.
+        if (!(localAdminHint || currentUserAdmin)) {
+            hideAdminUi();
+        }
     }
 }
 

@@ -47,7 +47,5 @@ GITHUB_CALLBACK_URL = os.getenv(
     "http://127.0.0.1:8000/api/v1/github/callback",
 )
 GITHUB_ENCRYPTION_KEY = os.getenv("GITHUB_ENCRYPTION_KEY", "")
-
-# Admin bootstrap settings
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "").strip().lower()
 ADMIN_GITHUB_ID = os.getenv("ADMIN_GITHUB_ID", "").strip()

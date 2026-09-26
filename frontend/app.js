@@ -275,6 +275,8 @@ async function bootstrapAuth() {
 
         if (session?.authenticated && session.user) {
             currentUser = session.user;
+            window.__sentinelUser = currentUser;
+            localStorage.setItem("sentinelai_is_admin", currentUser?.is_admin === true ? "1" : "0");
             showApplication();
             updateSessionUI(session);
             await loadPage("dashboard", false);
@@ -282,10 +284,14 @@ async function bootstrapAuth() {
         }
 
         currentUser = null;
+        window.__sentinelUser = null;
+        localStorage.removeItem("sentinelai_is_admin");
         showAuthScreen();
     } catch (error) {
         console.error("Session check failed:", error);
         currentUser = null;
+        window.__sentinelUser = null;
+        localStorage.removeItem("sentinelai_is_admin");
         showAuthScreen();
     }
 }
@@ -493,6 +499,8 @@ async function logoutAndShowLogin() {
     localStorage.removeItem("sentinelai_last_pr");
 
     currentUser = null;
+    window.__sentinelUser = null;
+    localStorage.removeItem("sentinelai_is_admin");
     pageHistory = [];
     currentPage = "dashboard";
     showAuthScreen("You are signed out. Sign in again to return to your SentinelAI workspace.");
