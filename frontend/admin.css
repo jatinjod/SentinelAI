@@ -133,3 +133,86 @@ button { cursor: pointer; }
     .user{flex-direction:column; align-items:stretch;}
     .actions{justify-content:flex-start;}
 }
+
+/* Admin sign-in */
+.admin-login-card {
+    max-width: 520px;
+    margin: 60px auto;
+    padding: 34px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(0,0,0,.30);
+}
+.admin-login-mark {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 18px;
+    border-radius: 14px;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 900;
+    font-size: 22px;
+}
+.admin-login-card h2 { margin: 8px 0 8px; font-size: 25px; }
+.admin-login-card > p { margin: 0 0 22px; color: var(--muted); line-height: 1.55; font-size: 13px; }
+.admin-login-form { display: grid; gap: 9px; }
+.admin-login-form label { color: var(--text); font-size: 12px; font-weight: 700; margin-top: 8px; }
+.admin-login-form input {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 13px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-2);
+    color: var(--text);
+    outline: none;
+}
+.admin-login-form input:focus { border-color: var(--primary); }
+.admin-password-wrap { position: relative; }
+.admin-password-wrap input { padding-right: 72px; }
+.password-toggle {
+    position: absolute;
+    right: 7px;
+    top: 7px;
+    min-height: 32px;
+    padding: 0 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-3);
+    color: var(--muted);
+}
+.field-error { min-height: 16px; color: var(--danger); font-size: 11px; }
+.admin-login-message { min-height: 18px; color: var(--danger); font-size: 12px; line-height: 1.45; }
+.primary-admin-button {
+    min-height: 46px;
+    margin-top: 7px;
+    border: none;
+    border-radius: 10px;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+}
+.primary-admin-button:disabled { opacity: .6; cursor: wait; }
+.admin-login-note {
+    margin-top: 18px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.5;
+}
+.denied-button {
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+@media (max-width: 700px) {
+    .admin-login-card { margin: 24px 0; padding: 24px; }
+}
