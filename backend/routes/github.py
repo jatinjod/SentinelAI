@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 import requests
+from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
@@ -111,13 +112,16 @@ def github_callback(
     state: str,
     db: Session = Depends(get_db),
 ):
-    stored_state = request.cookies.get(OAUTH_STATE_COOKIE)
+    # The OAuth state is a signed, time-limited value that already carries
+    # the SentinelAI user being linked. Do not require the state cookie here:
+    # the frontend and backend are separate Render origins, and browsers may
+    # legitimately refuse to persist/send a cross-origin OAuth state cookie.
     verified_state = verify_oauth_state(state)
 
-    if not stored_state or stored_state != state or not verified_state:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid or expired OAuth state.",
+    if not verified_state:
+        error_message = "GitHub authorization expired. Please start the connection again."
+        return RedirectResponse(
+            url=f"{FRONTEND_URL}#auth_error=" + quote(error_message, safe="")
         )
 
     _nonce, linked_user_id = verified_state
@@ -218,9 +222,15 @@ def github_callback(
             .first()
         )
         if existing_link is not None:
-            raise HTTPException(
-                status_code=409,
-                detail="This GitHub account is already connected to another SentinelAI account. Sign in to that account or use a different GitHub account.",
+            error_message = (
+                "This GitHub account is already connected to another SentinelAI account. "
+                "Sign in to that account or use a different GitHub account."
+            )
+            return RedirectResponse(
+                url=(
+                    f"{FRONTEND_URL}#auth_error="
+                    + quote(error_message, safe="")
+                )
             )
 
         user.github_id = github_user_id
