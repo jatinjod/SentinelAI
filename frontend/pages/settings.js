@@ -63,7 +63,7 @@ export async function render(container) {
                         </span>
                     </button>
 
-                    <button class="settings-tab settings-admin-tab" data-settings-tab="admin" hidden>
+                    <button class="settings-tab settings-admin-tab" data-settings-tab="admin" hidden style="display:none" aria-hidden="true">
                         <span>🛡</span>
                         <span>
                             <strong>Admin Panel</strong>
@@ -327,7 +327,7 @@ export async function render(container) {
                         </div>
                     </section>
 
-                    <section class="settings-section" data-settings-section="admin">
+                    <section class="settings-section" data-settings-section="admin" hidden style="display:none" aria-hidden="true">
                         <div class="settings-section-head">
                             <div>
                                 <h3>Admin Control Center</h3>
@@ -380,9 +380,42 @@ async function loadAdminAccess() {
         '.settings-admin-tab[data-settings-tab="admin"]'
     );
 
-    if (!adminTab) {
+    const adminSection = document.querySelector(
+        '[data-settings-section="admin"]'
+    );
+
+    if (!adminTab || !adminSection) {
         return;
     }
+
+    // Secure default: hide both the tab and section until the backend
+    // explicitly confirms that the current authenticated user is an admin.
+    const hideAdminUi = () => {
+        adminTab.hidden = true;
+        adminTab.style.display = "none";
+        adminTab.setAttribute("aria-hidden", "true");
+
+        adminSection.hidden = true;
+        adminSection.style.display = "none";
+        adminSection.setAttribute("aria-hidden", "true");
+
+        if (adminTab.classList.contains("active")) {
+            adminTab.classList.remove("active");
+        }
+    };
+
+    const showAdminUi = () => {
+        adminTab.hidden = false;
+        adminTab.style.display = "flex";
+        adminTab.setAttribute("aria-hidden", "false");
+
+        adminSection.hidden = false;
+        adminSection.style.display = "none";
+        adminSection.setAttribute("aria-hidden", "false");
+    };
+
+    // Never trust a stale UI flag from a previous account.
+    hideAdminUi();
 
     try {
         const API_BASE_URL =
@@ -407,21 +440,26 @@ async function loadAdminAccess() {
             {
                 method: "GET",
                 headers,
-                credentials: "include"
+                credentials: "include",
+                cache: "no-store"
             }
         );
 
         if (!response.ok) {
-            adminTab.hidden = true;
+            hideAdminUi();
             return;
         }
 
         const data = await response.json();
 
-        adminTab.hidden = data?.is_admin !== true;
+        if (data?.is_admin === true) {
+            showAdminUi();
+        } else {
+            hideAdminUi();
+        }
     } catch (error) {
         console.warn("Admin access check failed:", error);
-        adminTab.hidden = true;
+        hideAdminUi();
     }
 }
 
