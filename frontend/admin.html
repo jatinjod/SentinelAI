@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SentinelAI Admin Control Center</title>
+    <title>SentinelAI Admin</title>
     <link rel="stylesheet" href="admin.css">
 </head>
 <body>
-    <div class="admin-shell" id="adminShell">
+    <div class="admin-shell">
         <header class="admin-topbar">
             <div class="brand-block">
                 <div class="brand-icon">S</div>
@@ -23,80 +23,33 @@
         </header>
 
         <main class="admin-main">
-            <section class="admin-banner">
+            <div id="adminBanner" class="admin-banner">
                 <div>
                     <span class="eyebrow">SECURE ADMIN AREA</span>
                     <h1>Platform control center</h1>
                     <p>Monitor and manage SentinelAI accounts, GitHub access, scans, AI fixes and pull requests.</p>
                 </div>
                 <span class="admin-badge">ADMIN</span>
-            </section>
+            </div>
 
-            <section id="loginState" class="content" hidden></section>
-
-            <section id="dashboardState" class="content">
+            <section id="content" class="content">
                 <div class="admin-quick-actions">
-                    <button class="ghost-button" type="button" data-scroll="usersSection">Manage Users</button>
-                    <button class="ghost-button" type="button" data-scroll="securitySection">Security</button>
-                    <button class="ghost-button" type="button" data-scroll="scansSection">Scans</button>
-                    <button class="ghost-button" type="button" data-scroll="prsSection">Pull Requests</button>
-                    <button id="refreshAdmin" class="ghost-button" type="button">Refresh</button>
+                    <button class="ghost-button" type="button" disabled>Manage Users</button>
+                    <button class="ghost-button" type="button" disabled>Security</button>
+                    <button class="ghost-button" type="button" disabled>Scans</button>
+                    <button class="ghost-button" type="button" disabled>Pull Requests</button>
                 </div>
-
-                <div id="stats" class="stats">
-                    <div class="stat"><span>Users</span><strong data-stat="Users">—</strong><small>total accounts</small></div>
-                    <div class="stat"><span>Active</span><strong data-stat="Active">—</strong><small>enabled accounts</small></div>
-                    <div class="stat"><span>GitHub</span><strong data-stat="GitHub">—</strong><small>connected accounts</small></div>
-                    <div class="stat"><span>Repositories</span><strong data-stat="Repositories">—</strong><small>connected repos</small></div>
-                    <div class="stat"><span>Scans</span><strong data-stat="Scans">—</strong><small>security scans</small></div>
-                    <div class="stat"><span>Findings</span><strong data-stat="Findings">—</strong><small>security findings</small></div>
-                    <div class="stat"><span>AI Fixes</span><strong data-stat="AI Fixes">—</strong><small>generated fixes</small></div>
-                    <div class="stat"><span>Pull Requests</span><strong data-stat="Pull Requests">—</strong><small>GitHub remediation</small></div>
+                <div class="stats">
+                    <div class="stat"><span>Users</span><strong>—</strong><small>Total accounts</small></div>
+                    <div class="stat"><span>Active</span><strong>—</strong><small>Enabled accounts</small></div>
+                    <div class="stat"><span>GitHub</span><strong>—</strong><small>Connected accounts</small></div>
+                    <div class="stat"><span>Repositories</span><strong>—</strong><small>Connected repos</small></div>
+                    <div class="stat"><span>Scans</span><strong>—</strong><small>Security scans</small></div>
+                    <div class="stat"><span>Findings</span><strong>—</strong><small>Security findings</small></div>
+                    <div class="stat"><span>AI Fixes</span><strong>—</strong><small>Generated fixes</small></div>
+                    <div class="stat"><span>Pull Requests</span><strong>—</strong><small>GitHub remediation</small></div>
                 </div>
-
-                <div id="overviewNotice" class="admin-data-notice" hidden></div>
-
-                <div class="grid-2">
-                    <section class="card" id="usersSection">
-                        <div class="card-header">
-                            <div>
-                                <h2>User management</h2>
-                                <p>Control access, roles and GitHub connections.</p>
-                            </div>
-                            <input id="userSearch" class="search" type="search" placeholder="Search users" />
-                        </div>
-                        <div class="users-loading" id="usersLoading">Loading users…</div>
-                        <div id="usersList" class="users" hidden></div>
-                    </section>
-
-                    <section class="card" id="securitySection">
-                        <div class="card-header">
-                            <div>
-                                <h2>Security posture</h2>
-                                <p>Platform-wide finding severity.</p>
-                            </div>
-                        </div>
-                        <div id="securityContent" class="security">
-                            <div class="loading-card">Loading security data…</div>
-                        </div>
-                    </section>
-                </div>
-
-                <div class="grid-bottom">
-                    <section class="card" id="scansSection">
-                        <div class="card-header">
-                            <div><h2>Recent scans</h2><p>Latest scan activity.</p></div>
-                        </div>
-                        <div id="scansContent" class="activity"><div class="loading-card">Loading scans…</div></div>
-                    </section>
-
-                    <section class="card" id="prsSection">
-                        <div class="card-header">
-                            <div><h2>Recent pull requests</h2><p>Latest GitHub remediation activity.</p></div>
-                        </div>
-                        <div id="prsContent" class="activity"><div class="loading-card">Loading pull requests…</div></div>
-                    </section>
-                </div>
+                <div class="loading-card">Loading live admin data…</div>
             </section>
         </main>
     </div>

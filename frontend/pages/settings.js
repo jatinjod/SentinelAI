@@ -368,9 +368,12 @@ export async function render(container) {
 
     bindSettingsNavigation();
     bindPasswordToggles();
-    // Render the settings UI immediately. Admin visibility is resolved in the background.
-    await loadSettingsData();
+    // Resolve admin visibility immediately from the already-authenticated app state.
+    // Do not make the settings page wait for account-data/network requests.
     loadAdminAccess();
+    loadSettingsData().catch((error) => {
+        console.warn("Settings data load failed:", error);
+    });
     bindSettingsActions();
     loadPreferences();
 }
