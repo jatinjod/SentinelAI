@@ -60,7 +60,7 @@ def github_login():
         value=state,
         httponly=True,
         secure=secure_cookie,
-        samesite="lax",
+        samesite="none",
         max_age=600,
         path="/",
     )

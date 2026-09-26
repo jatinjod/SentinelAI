@@ -131,8 +131,8 @@ def set_session_cookie(response, user_id: int) -> None:
         key=SESSION_COOKIE_NAME,
         value=create_session_token(user_id),
         httponly=True,
-        secure=APP_ENV == "production",
-        samesite="lax",
+        secure=True,
+        samesite="none",
         max_age=60 * 60 * 24 * 7,
         path="/",
     )
