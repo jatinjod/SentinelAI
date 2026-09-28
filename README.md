@@ -6,11 +6,14 @@
 
 Analyze source code, detect security findings, and surface actionable results through a FastAPI backend and web dashboard.
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20SentinelAI-00A86B?style=for-the-badge&logo=render&logoColor=white)](https://sentinelai-frontend-t31x.onrender.com/)
 [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white)](https://www.sqlalchemy.org/)
 [![pytest](https://img.shields.io/badge/pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)](https://pytest.org/)
+
+**🚀 [Open Live Demo](https://sentinelai-frontend-t31x.onrender.com/)** · **[View Source](https://github.com/jatinjod/SentinelAI)**
 
 </div>
 
@@ -145,7 +148,7 @@ cd SentinelAI
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate
+.venv\\Scripts\\activate
 ```
 
 ### 3. Install dependencies
@@ -178,6 +181,14 @@ pytest
 ```
 
 SentinelAI also includes a sample vulnerable source file used to validate hardcoded-secret detection.
+
+---
+
+## Live Demo
+
+🚀 **[Open SentinelAI](https://sentinelai-frontend-t31x.onrender.com/)**
+
+The deployed frontend provides the web interface for interacting with the SentinelAI application.
 
 ---
 
