@@ -2,6 +2,7 @@ const SETTINGS_STYLE_ID = "sentinel-settings-styles";
 
 
 export async function render(container) {
+    const isAdminHint = localStorage.getItem("sentinelai_is_admin") === "1" || window.__sentinelUser?.is_admin === true;
     injectSettingsStyles();
 
     container.innerHTML = `
@@ -63,7 +64,7 @@ export async function render(container) {
                         </span>
                     </button>
 
-                    <button class="settings-tab settings-admin-tab" data-settings-tab="admin" hidden style="display:none" aria-hidden="true">
+                    <button class="settings-tab settings-admin-tab" data-settings-tab="admin" aria-hidden="true" style="display:${isAdminHint ? "flex" : "none"}" ${isAdminHint ? "" : "hidden"}>
                         <span>🛡</span>
                         <span>
                             <strong>Admin Panel</strong>
@@ -476,6 +477,11 @@ function bindSettingsNavigation() {
     document.querySelectorAll("[data-settings-tab]").forEach((button) => {
         button.addEventListener("click", () => {
             const tab = button.dataset.settingsTab;
+
+            if (tab === "admin") {
+                window.location.assign(`/admin.html?from=settings&v=${Date.now()}`);
+                return;
+            }
 
             document.querySelectorAll("[data-settings-tab]").forEach((item) => {
                 item.classList.toggle("active", item === button);
