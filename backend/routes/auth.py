@@ -218,3 +218,41 @@ def logout(response: Response):
     return {
         "message": "Logged out successfully."
     }
+
+@router.delete("/github")
+def disconnect_github(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user = get_current_user(request, db)
+
+    # Don't let users remove their only login method.
+    if not user.password_hash:
+        raise HTTPException(
+            status_code=400,
+            detail="Set an email and password before disconnecting GitHub.",
+        )
+
+    connection = (
+        db.query(GitHubConnection)
+        .filter(GitHubConnection.user_id == user.id)
+        .first()
+    )
+
+    if connection is None:
+        raise HTTPException(
+            status_code=404,
+            detail="GitHub is not connected.",
+        )
+
+    db.delete(connection)
+
+    # Remove the GitHub identity from the SentinelAI account.
+    user.github_id = None
+
+    db.commit()
+
+    return {
+        "message": "GitHub disconnected successfully.",
+        "github_connected": False,
+    }
