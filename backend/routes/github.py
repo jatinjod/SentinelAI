@@ -45,12 +45,13 @@ def _build_github_authorization_url(link_user_id: int | None) -> tuple[str, str]
 
     state = create_oauth_state(link_user_id)
     github_url = (
-        "https://github.com/login/oauth/authorize"
-        f"?client_id={GITHUB_CLIENT_ID}"
-        f"&redirect_uri={GITHUB_CALLBACK_URL}"
-        "&scope=read:user%20user:email%20repo"
-        f"&state={state}"
-    )
+    "https://github.com/login/oauth/authorize"
+    f"?client_id={GITHUB_CLIENT_ID}"
+    f"&redirect_uri={GITHUB_CALLBACK_URL}"
+    "&scope=read:user%20user:email%20repo"
+    "&prompt=select_account"
+    f"&state={state}"
+)
     return github_url, state
 
 
