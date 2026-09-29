@@ -186,3 +186,40 @@ button { cursor: pointer; }
         min-width:0;
     }
 }
+
+
+/* FINAL DEFINITIVE HEADER ALIGNMENT */
+.admin-topbar .top-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: nowrap;
+}
+.admin-topbar .top-actions .ghost-button {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 112px;
+    height: 40px;
+    min-height: 40px;
+    margin: 0;
+    padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    box-sizing: border-box;
+}
+.admin-topbar .top-actions #logoutButton {
+    min-width: 92px;
+}
+@media (max-width: 700px) {
+    .admin-topbar .top-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+    .admin-topbar .top-actions .ghost-button {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+}

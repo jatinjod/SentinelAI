@@ -377,17 +377,24 @@ function debounce(fn, delay) {
 
 async function bootstrapAdmin() {
     const token = getToken();
+    const adminHint = localStorage.getItem("sentinelai_is_admin") === "1";
 
-    if (!token) {
-        showLogin();
-        return;
+    // Always attempt cookie-based authentication. The main app already stores
+    // a secure session cookie, so the admin page must not depend on a token
+    // surviving in sessionStorage/localStorage.
+    // If the current browser is already known to be an admin, show the shell
+    // immediately while the server verifies the role and loads the data.
+    if (adminHint || token) {
+        showDashboard();
+    } else {
+        // Keep the dashboard shell available while auth is checked; a real
+        // unauthenticated visitor will be moved to the sign-in state below.
+        showDashboard();
     }
-
-    // Dashboard shell is already in HTML, so it is visible immediately.
-    showDashboard();
 
     try {
         const me = await api("/api/v1/admin/me");
+
         if (!me?.is_admin) {
             clearToken();
             localStorage.removeItem("sentinelai_is_admin");

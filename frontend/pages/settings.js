@@ -371,104 +371,39 @@ export async function render(container) {
 
     bindSettingsNavigation();
     bindPasswordToggles();
-    // Resolve admin visibility immediately from the authenticated user hint,
-    // while account data loads in the background. This avoids a visible delay.
-    loadAdminAccess();
+    // Admin state is already confirmed by /auth/me during app bootstrap.
+    // Render it immediately so Settings never waits on a second request.
+    applyAdminVisibility();
     loadSettingsData();
     bindSettingsActions();
     loadPreferences();
 }
 
 
-async function loadAdminAccess() {
+function applyAdminVisibility() {
     const adminTab = document.querySelector(
         '.settings-admin-tab[data-settings-tab="admin"]'
     );
 
+    if (!adminTab) return;
+
+    const isAdmin =
+        window.__sentinelUser?.is_admin === true ||
+        localStorage.getItem("sentinelai_is_admin") === "1";
+
+    adminTab.hidden = !isAdmin;
+    adminTab.style.display = isAdmin ? "flex" : "none";
+    adminTab.setAttribute("aria-hidden", isAdmin ? "false" : "true");
+
+    // Keep the admin section itself hidden: the tab is a navigation shortcut
+    // to the dedicated control center, not an embedded duplicate dashboard.
     const adminSection = document.querySelector(
         '[data-settings-section="admin"]'
     );
-
-    if (!adminTab || !adminSection) {
-        return;
-    }
-
-    const hideAdminUi = () => {
-        adminTab.hidden = true;
-        adminTab.style.display = "none";
-        adminTab.setAttribute("aria-hidden", "true");
+    if (adminSection) {
         adminSection.hidden = true;
         adminSection.style.display = "none";
         adminSection.setAttribute("aria-hidden", "true");
-        if (adminTab.classList.contains("active")) {
-            adminTab.classList.remove("active");
-        }
-    };
-
-    const showAdminUi = () => {
-        adminTab.hidden = false;
-        adminTab.style.display = "flex";
-        adminTab.setAttribute("aria-hidden", "false");
-        adminSection.hidden = false;
-        adminSection.style.display = "none";
-        adminSection.setAttribute("aria-hidden", "false");
-    };
-
-    // No network wait for the first paint. The main app stores this flag only
-    // after /auth/me has confirmed the current account. The admin endpoint
-    // below still verifies the role in the background.
-    const localAdminHint = localStorage.getItem("sentinelai_is_admin") === "1";
-    const currentUserAdmin = window.__sentinelUser?.is_admin === true;
-
-    if (localAdminHint || currentUserAdmin) {
-        showAdminUi();
-    } else {
-        hideAdminUi();
-    }
-
-    try {
-        const API_BASE_URL =
-            window.API_BASE_URL ||
-            "https://sentinelai-backend-pwur.onrender.com";
-
-        const token =
-            sessionStorage.getItem("sentinelai_session_token") ||
-            localStorage.getItem("sentinelai_session_token") ||
-            "";
-
-        const headers = { Accept: "application/json" };
-        if (token) headers.Authorization = `Bearer ${token}`;
-
-        const response = await fetch(
-            `${API_BASE_URL}/api/v1/admin/me`,
-            {
-                method: "GET",
-                headers,
-                credentials: "include",
-                cache: "no-store"
-            }
-        );
-
-        if (!response.ok) {
-            hideAdminUi();
-            return;
-        }
-
-        const data = await response.json();
-        if (data?.is_admin === true) {
-            showAdminUi();
-            localStorage.setItem("sentinelai_is_admin", "1");
-        } else {
-            hideAdminUi();
-            localStorage.setItem("sentinelai_is_admin", "0");
-        }
-    } catch (error) {
-        console.warn("Admin access check failed:", error);
-        // Keep a server-confirmed admin hint through transient network issues,
-        // but never reveal the controls for accounts without the hint.
-        if (!(localAdminHint || currentUserAdmin)) {
-            hideAdminUi();
-        }
     }
 }
 
@@ -479,7 +414,7 @@ function bindSettingsNavigation() {
             const tab = button.dataset.settingsTab;
 
             if (tab === "admin") {
-                window.location.assign(`/admin.html?from=settings&v=${Date.now()}`);
+                window.location.href = "/admin.html";
                 return;
             }
 
